@@ -12,20 +12,20 @@ KEYSET = {
     2: 0xcaffeebabe421337decafbeddeadbeef,
 }
 
-
 class MdosProtocolException(Exception):
     pass
 
 class DoorConnection(object):
     BUFFER_SIZE = 64
     
-    def __init__(self, ip, port, keyset):
+    def __init__(self, ip, port, keyset, getUserChallengeCB):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((ip, port))
         self.keyset = keyset
+        self.getUserChallengeCB = getUserChallengeCB
 
     def send(self, msg):
-        self.sock.send(''.join(chr(msg)))
+        self.sock.send(msg) # ''.join(chr(msg)))
 
     def recv(self, checkMessageIdentifier=None, checkMessageLength=None):
         inp = self.sock.recv(self.BUFFER_SIZE)
@@ -47,12 +47,15 @@ class DoorConnection(object):
         res = s.decode('hex')
         return "\0" * (bytes - res) + res
     
+    def getNonce(self):
+        return self.toBytes(random.SystemRandom())
+
     def login(self, usePresenceChallenge=True):
         # step 1
-        msg = [
-            0x00,  # message identifier (MI)
-            0x42   # protocol version
-        ]
+        msg = ""
+            "\x00"  # message identifier (MI)
+            "\x42"  # protocol version
+        
         self.send(msg)
 
         # step 2
@@ -61,7 +64,40 @@ class DoorConnection(object):
 
         # step 3
         mode = 0x01 if self.usePresenceChallenge else 0x00
-        nc = self.toBytes(random.SystemRandom()) # check if this has enough entropy
-        mac = self.hmac(tc + 
+        nc = self.getNonce() # check if this has enough entropy
+        mac = self.hmac(tc + mode + nc, 0)
+        msg = chr(0x02) + chr(mode) + nc + hmac
+        self.send(msg)
     
+        # step 4
+        inp = self.recv(0x03, 17)
+        oc = inp[1:16]
+
+        if usePresenceChallenge:
+            pc = toBytes(self.getUserChallengeCB(), 2)
+        else:
+            pc = "\xff\xff"
+
+        # step 5
+        ac = self.getNonce()
+        mac = self.hmac(nc + pc + oc + ac, 1)
+
+        self.send("\x04" + ac + mac)
+
+        # step 6
+        inp = self.recv(0x05, 33)
+        mac = inp[1:32]
+        expmac = self.hmac(ac, 2)
+        if mac != expmac:
+            raise MdosProtocolException("In message 0x05: illegal hmac. Expected %s..., received %s..." % (expmac[:8], mac[:8]))
+
+        return True
+
+if __name__ == "__main__":
+    def dummyPCInput():
+        return int(raw_input("Enter User Challenge: "))
+
+    door = DoorConnection(ESP_IP, ESP_PORT, dummyPCInput)
+    if door.login():
+        print "Login successful."
         
