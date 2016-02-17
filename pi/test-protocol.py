@@ -5,7 +5,7 @@ import random
 import struct
 
 ESP_IP = '127.0.0.1'
-ESP_PORT = '42001'
+ESP_PORT = 42001
 KEYSET = {
     0: 0xdecafbeddeadbeefcaffeebabe421337,
     1: 0xbe421337decafbeddeadbeefcaffeeba,
@@ -53,8 +53,8 @@ class DoorConnection(object):
     def login(self, usePresenceChallenge=True):
         # step 1
         msg = ""
-            "\x00"  # message identifier (MI)
-            "\x42"  # protocol version
+        "\x00"  # message identifier (MI)
+        "\x42"  # protocol version
         
         self.send(msg)
 
@@ -97,7 +97,6 @@ if __name__ == "__main__":
     def dummyPCInput():
         return int(raw_input("Enter User Challenge: "))
 
-    door = DoorConnection(ESP_IP, ESP_PORT, dummyPCInput)
+    door = DoorConnection(ESP_IP, ESP_PORT, KEYSET, dummyPCInput)
     if door.login():
         print "Login successful."
-        
