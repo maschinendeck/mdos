@@ -28,7 +28,7 @@ MODE: 0x00 (no presence challenge), 0x01 (use presence challenge)
    OPENING CHALLENCE (OC)
    
    D0: 0x03
-   D1-32: OC
+   D1-16: OC
 
 5. Pi -> ESP
    ACKNOWLEDGE CHALLENGE (AC) + HMAC(NC+PC+OC+AC,K1)
@@ -36,7 +36,7 @@ MODE: 0x00 (no presence challenge), 0x01 (use presence challenge)
    
    D0: 0x04
    D1-16: AC
-   D18-49: HMAC
+   D17-48: HMAC
    
 6. ESP -> Pi
    HMAC(AC,K2)
