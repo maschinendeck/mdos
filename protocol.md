@@ -28,7 +28,7 @@ PC: 2 Byte. Values 0 -- 9999 encode mode with presence challenge, 0xffff no pres
    OPENING CHALLENCE (OC)
    
    D0: 0x03
-   D1-32: OC
+   D1-16: OC
 
 5. Pi -> ESP
    ACKNOWLEDGE CHALLENGE (AC) + HMAC(NC+PC+OC+AC,K1)
@@ -36,7 +36,7 @@ PC: 2 Byte. Values 0 -- 9999 encode mode with presence challenge, 0xffff no pres
    
    D0: 0x04
    D1-16: AC
-   D18-49: HMAC
+   D17-48: HMAC
    
 6. ESP -> Pi
    HMAC(AC,K2)
