@@ -18,7 +18,7 @@ end
 
 cnt_rand_insecure = 0
 function rand_insecure()
-   result = crypto.encrypt(AES-ECB, KH0, cnt_padding(cnt_rand_insecure))
+   result = crypto.encrypt("AES-ECB", KH0, cnt_padding(cnt_rand_insecure))
    cnt_rand_insecure = cnt_rand_insecure + 1
    return result
 end
@@ -26,7 +26,7 @@ end
 -- TODO: save cnt_rand_secure
 cnt_rand_secure = 0
 function rand_secure()
-   result = crypto.encrypt(AES-ECB, KH1, cnt_padding(cnt_rand_secure))
+   result = crypto.encrypt("AES-ECB", KH1, cnt_padding(cnt_rand_secure))
    cnt_rand_secure = cnt_rand_secure + 1
    return result
 end
@@ -40,16 +40,20 @@ pc = nil
 mode = nil
 
 function recv(c, pl)
-   if state == 0 and pl:len() == 2 and pl:byte(0) == 0x0 and pl:byte(1) == 0x42 then
+   print ("received " .. pl:len() .. " chars: " .. pl)
+   if pl:len() == 1 and pl:byte(1) == 0x23 then
+      print "PING/PONG"
+      c:send(string.char(0x42))
+   elseif state == 0 and pl:len() == 2 and pl:byte(1) == 0x0 and pl:byte(2) == 0x42 then
       msgid = string.char(0x01)
       tc = rand_insecure()
       msg = msgid .. tc
       c:send(msg)
       state = state + 1
-   elseif state == 1 and pl:len() == 50 and pl:byte(0) == 0x2 then
-      mode = pl:byte(1)
-      nc = pl:byte(2,17)
-      h_rec = pl:byte(18,49)
+   elseif state == 1 and pl:len() == 50 and pl:byte(1) == 0x2 then
+      mode = pl:byte(2)
+      nc = pl:byte(3,18)
+      h_rec = pl:byte(19,50)
       h_own = crypto.hmac("sha256", tc .. mode .. nc, K0)
       if h_rec == h_own then
 	 msgid = string.char(0x03)
@@ -63,9 +67,9 @@ function recv(c, pl)
 	 c:send(msg)
 	 state = state + 1
       end
-   elseif state == 2 and pl:len() == 49 and pl:byte(0) == 0x4 then
-      ac = pl:byte(1,16)
-      h_rec = pl:byte(17,48)
+   elseif state == 2 and pl:len() == 49 and pl:byte(1) == 0x4 then
+      ac = pl:byte(2,17)
+      h_rec = pl:byte(18,49)
       h_own = crypto.hmac("sha256", nc .. pc .. oc .. ac, K1)
       if h_rec == h_own then
 	 msgid = string.char(0x05)

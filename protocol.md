@@ -44,7 +44,14 @@ MODE: 0x00 (no presence challenge), 0x01 (use presence challenge)
    D0: 0x05
    D1-32: HMAC
    
-   
+==== PING/PONG ====
+
+D0: 0x23
+
+RESPONSE: 0x42
+
+
+
    
 ==== dev keys ====
 
