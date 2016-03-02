@@ -1,0 +1,14 @@
+.main {
+    text-align: center;
+}
+
+.logo {
+    width: 400px;
+    max-width: 100%;
+    display: block;
+    margin: 20px auto;
+}
+
+.main button {
+    padding-top: 20px;
+}
