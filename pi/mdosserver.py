@@ -34,19 +34,24 @@ class DoorConnection(object):
     def __init__(self, ip, port, keyset):
         self.keyset = keyset
         self.sessions = {}
+        self.ip = ip
+        self.port = port
 
     def connect(self):
-        logging.debug("door connection started. ip=%s:%d" % (ip, port))
+        logging.debug("door connection started. ip=%s:%d" % (self.ip, self.port))
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((ip, port))
-        self.getUserChallengeCB = getUserChallengeCB
+        self.socket.connect((self.ip, self.port))
 
     def disconnect(self):
         self.socket.close()
 
+    # get string of bytes, return string with space-separated hex-printed bytes
+    def printBytes(self, msg):
+        return ' '.join("%02x" % ord(c) for c in msg)
+
     def send(self, msg):
         l = len(msg)
-        logging.debug("Send message: %r" % msg)
+        logging.debug("Send message: %s" % self.printBytes(msg))
         sent = self.socket.send(msg) # ''.join(chr(msg)))
         if sent < l:
             logging.debug("Only %d of %d bytes sent. Retrying." % (sent, l))
@@ -58,7 +63,7 @@ class DoorConnection(object):
         inp = self.socket.recv(self.BUFFER_SIZE)
         if len(inp) == 0:
             raise MdosProtocolException("Received empty response.")
-        logging.debug("Received message: %r" % inp)
+        logging.debug("Received message: %s" % self.printBytes(inp))
         if checkMessageIdentifier is not None and inp[0] != chr(checkMessageIdentifier):
             raise MdosProtocolException(
                 "Expected message identifier %x, received %r!" % (checkMessageIdentifier, inp[0]))
@@ -68,7 +73,10 @@ class DoorConnection(object):
         return inp
 
     def hmac(self, msg, keyid):
-        return hmac.new(self.keyset[keyid], msg, digestmod=hashlib.sha256).digest()
+        out = hmac.new(self.toBytes(self.keyset[keyid]), msg, digestmod=hashlib.sha256).digest()
+    
+        logging.debug("Macing: %s -> %s" % (self.printBytes(msg), self.printBytes(out)))
+        return out
 
     @staticmethod
     def toBytes(num, bytes=16):
@@ -76,7 +84,7 @@ class DoorConnection(object):
         if len(s) & 1:
             s = '0' + s
         res = s.decode('hex')
-        return "\0" * (bytes - res) + res
+        return "\0" * (bytes - len(res)) + res
     
     def getNonce(self):
         return self.toBytes(random.SystemRandom().getrandbits(16 * 8))
@@ -98,34 +106,38 @@ class DoorConnection(object):
         # step 2
         logging.debug("Step 2")
         inp = self.recv(0x01, 17)
-        tc = inp[1:16]
+        tc = inp[1:17]
+        logging.debug("tc=%s" % self.printBytes(tc))
 
         # step 3
         logging.debug("Step 3")
         mode = 0x01 if usePresenceChallenge else 0x00
         nc = self.getNonce() # check if this has enough entropy
-        mac = self.hmac(tc + mode + nc, 0)
-        msg = chr(0x02) + chr(mode) + nc + hmac
+        logging.debug("nc=%s" % self.printBytes(nc))
+        mac = self.hmac(tc + chr(mode) + nc, 0)
+        logging.debug("mac=%s" % self.printBytes(mac))
+        msg = chr(0x02) + chr(mode) + nc + mac
         self.send(msg)
     
         # step 4
         logging.debug("Step 4")
         inp = self.recv(0x03, 17)
-        oc = inp[1:16]
-
-        self.disconnect()
+        oc = inp[1:17]
+        logging.debug("oc=%s" % self.printBytes(oc))
 
         sid = random.SystemRandom().getrandbits(16 * 8)
         self.sessions[sid] = [nc, oc]
-
+        logging.debug("Session ID: %d" % sid)
         if usePresenceChallenge:
+            logging.debug("Waiting for PC.")
             return sid
         else:
+            logging.debug("Finishing session with FFFF:")
             return self.finishSession(sid, "\xff\xff")
 
     def finishSession(self, sid, userChallenge):
-        self.connect()
         pc = userChallenge # for user input, use toBytes(self.getUserChallengeCB(), 2)
+        logging.debug("pc=%s" % self.printBytes(pc))
 
         nc, oc = self.sessions[sid]
         del self.sessions[sid]
@@ -133,14 +145,17 @@ class DoorConnection(object):
         # step 5
         logging.debug("Step 5")
         ac = self.getNonce()
+        logging.debug("ac=%s" % self.printBytes(ac))
+
         mac = self.hmac(nc + pc + oc + ac, 1)
+        logging.debug("mac=%s" % self.printBytes(mac))
 
         self.send("\x04" + ac + mac)
 
         # step 6
         logging.debug("Step 6")
         inp = self.recv(0x05, 33)
-        mac = inp[1:32]
+        mac = inp[1:33]
         expmac = self.hmac(ac, 2)
 
         self.disconnect()
@@ -162,19 +177,22 @@ if __name__ == "__main__":
     door = DoorConnection(ESP_IP, ESP_PORT, KEYSET)
 
     logging.info("Server started.")
-    
-    while 1:
-        #accept connections from outside
-        (clientsocket, address) = serversocket.accept()
-        f = clientsocket.makefile()
-        cmd = f.readline().strip().split(' ')
-        logging.info("Received: '%s'" % cmd)
-        if cmd[0] == 'start':
-            clientsocket.send(door.startSession(True))
-        elif cmd[0] == 'finish':
-            sid = int(cmd[1])
-            pc = DoorConnection.toBytes(int(cmd[2]))
-            res = door.finishSession(sid, pc)
-            clientsocket.send('1' if res else '0')
-        f.close()
+    try:
+        while 1:
+            #accept connections from outside
+            (clientsocket, address) = serversocket.accept()
+            f = clientsocket.makefile()
+            cmd = f.readline().strip().split(' ')
+            logging.info("Received: '%s'" % cmd)
+            if cmd[0] == 'start':
+                clientsocket.send("%d" % door.startSession(False))
+            elif cmd[0] == 'finish':
+                sid = int(cmd[1])
+                pc = DoorConnection.toBytes(int(cmd[2]))
+                res = door.finishSession(sid, pc)
+                clientsocket.send('1' if res else '0')
+            f.close()
+            clientsocket.close()
+    finally:
+        serversocket.close()
         clientsocket.close()
