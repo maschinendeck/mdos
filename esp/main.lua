@@ -1,3 +1,7 @@
+if sv ~= nil then
+   sv:close()
+end
+
 K0 = string.char(0xde,0xca,0xfb,0xed,0xde,0xad,0xbe,0xef,0xca,0xff,0xee,0xba,0xbe,0x42,0x13,0x37)
 K1 = string.char(0xbe,0x42,0x13,0x37,0xde,0xca,0xfb,0xed,0xde,0xad,0xbe,0xef,0xca,0xff,0xee,0xba)
 K2 = string.char(0xca,0xff,0xee,0xba,0xbe,0x42,0x13,0x37,0xde,0xca,0xfb,0xed,0xde,0xad,0xbe,0xef)
@@ -39,47 +43,101 @@ oc = nil
 pc = nil
 mode = nil
 
+
+--- Returns HEX representation of num
+function num2hex(num)
+   local hexstr = '0123456789abcdef'
+   local s = ''
+   while num > 0 do
+      local mod = num % 16
+      s = string.sub(hexstr, mod+1, mod+1) .. s
+      num = math.floor(num / 16)
+   end
+   if s == '' then s = '0' end
+   return s
+end
+
+function explode_string(s)
+   local l = s:len()
+   local result = ""
+   for i=1,l,1 do
+      result = result .. '0x' .. num2hex(s:byte(i)) .. ','
+   end
+   return result
+end
+
+
+function disc(c)
+   print ("disconnected")
+   state = 0
+   tc = nil
+   nc = nil
+   oc = nil
+   pc = nil
+   mode = nil
+end
+
 function recv(c, pl)
-   print ("received " .. pl:len() .. " chars: " .. pl)
+   msg = nil
+   print ("received " .. pl:len() .. " bytes: " .. explode_string(pl) .. " string: " .. pl)
    if pl:len() == 1 and pl:byte(1) == 0x23 then
       print "PING/PONG"
-      c:send(string.char(0x42))
+      msg = string.char(0x42)
+      -- c:send(string.char(0x42))
    elseif state == 0 and pl:len() == 2 and pl:byte(1) == 0x0 and pl:byte(2) == 0x42 then
+      print "0:"
       msgid = string.char(0x01)
       tc = rand_insecure()
+      print ("tc " .. explode_string(tc))
       msg = msgid .. tc
-      c:send(msg)
+      -- c:send(msg)
       state = state + 1
    elseif state == 1 and pl:len() == 50 and pl:byte(1) == 0x2 then
-      mode = pl:byte(2)
-      nc = pl:byte(3,18)
-      h_rec = pl:byte(19,50)
+      print "2:"
+      mode = pl:sub(2,2)
+      nc = pl:sub(3,18)
+      h_rec = pl:sub(19,50)
       h_own = crypto.hmac("sha256", tc .. mode .. nc, K0)
+      print ("mode " .. explode_string(mode))
+      print ("nc " .. explode_string(nc))
+      print ("h_rec " .. explode_string(h_rec))
+      print ("h_own " .. explode_string(h_own))
       if h_rec == h_own then
 	 msgid = string.char(0x03)
 	 oc = rand_secure()
-	 if mode == 0x01 then
+	 print ("oc " .. explode_string(oc))
+	 if mode == string.char(0x01) then
 	    pc = rand_secure() -- TODO: trim to 4 digits
 	 else
 	    pc = string.char(0xff) .. string.char(0xff)
 	 end
+	 print ("pc " .. explode_string(pc))
 	 msg = msgid .. oc
-	 c:send(msg)
+	 -- c:send(msg)
 	 state = state + 1
       end
    elseif state == 2 and pl:len() == 49 and pl:byte(1) == 0x4 then
-      ac = pl:byte(2,17)
-      h_rec = pl:byte(18,49)
+      print "4:"
+      ac = pl:sub(2,17)
+      h_rec = pl:sub(18,49)
       h_own = crypto.hmac("sha256", nc .. pc .. oc .. ac, K1)
+      print ("ac " .. explode_string(ac))
+      print ("h_rec " .. explode_string(h_rec))
+      print ("h_own " .. explode_string(h_own))
       if h_rec == h_own then
+      print ("OK")
 	 msgid = string.char(0x05)
 	 h = crypto.hmac("sha256", ac, K2)
 	 msg = msgid .. h
-	 c:send(msg)
+	 -- c:send(msg)
 	 state = 0
       end
    else
       c:close()
+   end
+   if msg ~= nil then
+      print ("send " .. msg:len() .. " bytes: " .. explode_string(msg) .. " string: " .. msg)
+      c:send(msg)
    end
 end
 
@@ -89,5 +147,6 @@ sv = net.createServer(net.TCP, 30)
 
 sv:listen(42001, function(c)
 	     c:on("receive", recv)
+	     c:on("disconnection", disc)
 end)
 
