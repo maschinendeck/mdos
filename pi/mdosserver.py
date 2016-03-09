@@ -133,7 +133,7 @@ class DoorConnection(object):
             return sid
         else:
             logging.debug("Finishing session with FFFF:")
-            return self.finishSession(sid, "\xff\xff")
+            return self.finishSession(sid, "\xff\xff\xff\xff")
 
     def finishSession(self, sid, userChallenge):
         pc = userChallenge # for user input, use toBytes(self.getUserChallengeCB(), 2)
@@ -183,12 +183,12 @@ if __name__ == "__main__":
             (clientsocket, address) = serversocket.accept()
             f = clientsocket.makefile()
             cmd = f.readline().strip().split(' ')
-            logging.info("Received: '%s'" % cmd)
+            logging.info("Received: %r" % cmd)
             if cmd[0] == 'start':
-                clientsocket.send("%d" % door.startSession(False))
+                clientsocket.send("%d" % door.startSession(True))
             elif cmd[0] == 'finish':
                 sid = int(cmd[1])
-                pc = DoorConnection.toBytes(int(cmd[2]))
+                pc = ''.join(DoorConnection.toBytes(int(c), 1) for c in cmd[2])
                 res = door.finishSession(sid, pc)
                 clientsocket.send('1' if res else '0')
             f.close()

@@ -5,15 +5,23 @@ import socket
 MDOS_IP = '127.0.0.1'
 MDOS_PORT = 42002
 
-socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-socket.connect((MDOS_IP, MDOS_PORT))
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((MDOS_IP, MDOS_PORT))
 
-socket.send('start\n')
-sid = socket.recv(1024)
+print "sent start"
+s.send('start\n')
+sid = s.recv(1024)
+s.close()
+print "sid is %s" % sid
 pc = int(raw_input("Enter challenge: "))
-socket.send('finish %s %d' % (sid, pc))
-res = socket.recv(1)
-socket.close()
+msg = 'finish %s %04d\n' % (sid, pc)
+print "sent %s" % msg
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((MDOS_IP, MDOS_PORT))
+s.send(msg)
+res = s.recv(1)
+s.close()
 
 
 if res:
