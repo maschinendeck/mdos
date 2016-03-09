@@ -88,6 +88,8 @@ function disc(c)
 end
 
 function recv(c, pl)
+   local ip, port = c:getpeer()
+   print ("data from " .. ip)
    msg = nil
    print ("received " .. pl:len() .. " bytes: " .. explode_string(pl) .. " string: " .. pl)
    if pl:len() == 1 and pl:byte(1) == 0x23 then
@@ -166,7 +168,6 @@ function recv(c, pl)
       c:send(msg)
    end
 end
-
 
 
 sv = net.createServer(net.TCP, 30)
