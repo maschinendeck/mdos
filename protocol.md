@@ -1,6 +1,6 @@
 HMAC: always HMAC-SHA256
 
-PC: 2 Byte. Values 0 -- 9999 encode mode with presence challenge, 0xffff no presence challenge
+PC: 4 Byte. Each byte encodes one digit. 0xffffffff encodes no presence challenge
 MODE: 0x00 (no presence challenge), 0x01 (use presence challenge)
 
 1. Pi -> ESP
