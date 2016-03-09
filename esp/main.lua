@@ -107,9 +107,16 @@ function recv(c, pl)
 	 oc = rand_secure()
 	 print ("oc " .. explode_string(oc))
 	 if mode == string.char(0x01) then
-	    pc = rand_secure() -- TODO: trim to 4 digits
+	    local pc_src = rand_secure()
+	    local pc_num = (pc_src:byte(1) * 256 + pc_src:byte(2)) % 10000
+	    pc = ""
+	    for i=1,4,1 do
+	       pc = pc .. string.char(pc_num % 10)
+	       pc_num = math.floor(pc_num / 10)
+	       --pc = string.char(pc_src:byte(1) % 10) .. string.char(pc_src:byte(2) % 10) .. string.char(pc_src:byte(3) % 10) .. string.char(pc_src:byte(4) % 10)
+	    end
 	 else
-	    pc = string.char(0xff) .. string.char(0xff)
+	    pc = string.char(0xff) .. string.char(0xff) .. string.char(0xff) .. string.char(0xff)
 	 end
 	 print ("pc " .. explode_string(pc))
 	 msg = msgid .. oc
