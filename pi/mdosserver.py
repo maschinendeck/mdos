@@ -184,13 +184,17 @@ if __name__ == "__main__":
             f = clientsocket.makefile()
             cmd = f.readline().strip().split(' ')
             logging.info("Received: %r" % cmd)
-            if cmd[0] == 'start':
-                clientsocket.send("%d" % door.startSession(True))
-            elif cmd[0] == 'finish':
-                sid = int(cmd[1])
-                pc = ''.join(DoorConnection.toBytes(int(c), 1) for c in cmd[2])
-                res = door.finishSession(sid, pc)
-                clientsocket.send('1' if res else '0')
+            try:
+                if cmd[0] == 'start':
+                    clientsocket.send("%d" % door.startSession(True))
+                elif cmd[0] == 'finish':
+                    sid = int(cmd[1])
+                    pc = ''.join(DoorConnection.toBytes(int(c), 1) for c in cmd[2])
+                    res = door.finishSession(sid, pc)
+                    clientsocket.send('1' if res else '0')
+            except MdosProtocolException, e:
+                logging.exception(e)
+                clientsocket.send('e')
             f.close()
             clientsocket.close()
     finally:
