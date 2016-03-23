@@ -138,7 +138,7 @@ function recv(c, pl)
 	 state = state + 1
       else
 	 c:close()
-   disp_off()
+   disp_write_fail()
       end
    elseif state == 2 and pl:len() == 49 and pl:byte(1) == 0x4 then
       print "4:"
@@ -163,11 +163,11 @@ function recv(c, pl)
 	 state = 0
       else
 	 c:close()
-   disp_off()
+   disp_write_fail()
       end
    else
       c:close()
-      disp_off()
+      disp_write_fail()
    end
    if msg ~= nil then
       print ("send " .. msg:len() .. " bytes: " .. explode_string(msg) .. " string: " .. msg)
