@@ -17,6 +17,7 @@ KH1 = string.char(0x98,0x76,0x54,0x32,0x10,0x98,0x76,0x54,0x32,0x10,0x98,0x76,0x
 function tmr_relay_off()
    gpio.write(1, gpio.LOW)
    tmr.unregister(0)
+   disp_off()
 end
 
 function cnt_padding(cnt)
@@ -121,12 +122,13 @@ function recv(c, pl)
 	 if mode == string.char(0x01) then
 	    local pc_src = rand_secure()
 	    local pc_num = (pc_src:byte(1) * 256 + pc_src:byte(2)) % 10000
+        disp_write_num_reverse(pc_num)
 	    pc = ""
 	    for i=1,4,1 do
 	       pc = pc .. string.char(pc_num % 10)
 	       pc_num = math.floor(pc_num / 10)
 	       --pc = string.char(pc_src:byte(1) % 10) .. string.char(pc_src:byte(2) % 10) .. string.char(pc_src:byte(3) % 10) .. string.char(pc_src:byte(4) % 10)
-	    end
+	    end     
 	 else
 	    pc = string.char(0xff) .. string.char(0xff) .. string.char(0xff) .. string.char(0xff)
 	 end
@@ -136,6 +138,7 @@ function recv(c, pl)
 	 state = state + 1
       else
 	 c:close()
+   disp_off()
       end
    elseif state == 2 and pl:len() == 49 and pl:byte(1) == 0x4 then
       print "4:"
@@ -148,6 +151,7 @@ function recv(c, pl)
       if h_rec == h_own then
 	 print ("OK")
 	 gpio.write(1, gpio.HIGH)
+    disp_write_open()
 	 tmr.register(0, 3000, tmr.ALARM_SINGLE, tmr_relay_off)
 	 tmr.start(0)
 	 --tmr.delay(4000000)
@@ -159,9 +163,11 @@ function recv(c, pl)
 	 state = 0
       else
 	 c:close()
+   disp_off()
       end
    else
       c:close()
+      disp_off()
    end
    if msg ~= nil then
       print ("send " .. msg:len() .. " bytes: " .. explode_string(msg) .. " string: " .. msg)

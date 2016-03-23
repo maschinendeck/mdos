@@ -39,3 +39,5 @@ wifi.sta.autoconnect (1)
 
 -- Hang out until we get a wifi connection before the httpd server is started.
 wait_for_wifi_conn ( )
+
+dofile("display.lua")
