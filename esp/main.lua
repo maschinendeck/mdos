@@ -38,11 +38,33 @@ function rand_insecure()
    return result
 end
 
--- TODO: save cnt_rand_secure
-cnt_rand_secure = 0
+
+function save_cnt_rand_secure()
+   file.open("cnt_rand_secure", "w")
+   file.write(string.format("%x",cnt_rand_secure))
+   file.close()
+end
+function load_cnt_rand_secure()
+   if not file.exists("cnt_rand_secure") then
+      file.open("cnt_rand_secure", "w")
+      file.write("0")
+      file.close()
+   end
+   file.open("cnt_rand_secure", "r")
+   cnt_rand_secure_str = file.read(1024)
+   file.close()
+   cnt_rand_secure = tonumber(cnt_rand_secure_str,16) + 128
+   save_cnt_rand_secure()
+end
+load_cnt_rand_secure()
+
+
 function rand_secure()
    result = crypto.encrypt("AES-ECB", KH1, cnt_padding(cnt_rand_secure))
    cnt_rand_secure = cnt_rand_secure + 1
+   if cnt_rand_secure % 128 == 0 then
+      save_cnt_rand_secure()
+   end
    return result
 end
 
