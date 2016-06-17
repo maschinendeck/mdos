@@ -45,36 +45,56 @@ class lua_gpio(object):
     def write(a,b):
         pass
 
-class ClientSocketWrapper(object):
+class LuaClientSocketProxy(object):
+    def __init__(self, cs, address):
+        self._cs = cs
+        self._address = address
+
+    def getpeer(self):
+        return self._address
+
+    def close(self):
+        print "close"
+        self._cs.close()
+        
+    def __getattr__(self, name):
+        return getattr(self._cs, name)
+  
+class ClientSocketWrapper(threading.Thread):
     callbacks = {}
     
     def __init__(self, clientsocket, address):
+        threading.Thread.__init__(self)
+        print address
         self.clientsocket = clientsocket
+        self.clientsocket_proxy = LuaClientSocketProxy(clientsocket, address)
         self.socketfile = clientsocket.makefile()
         self.address = address
-        threading.Thread(target=self.run).run()
 
     def run(self):
-        
+        print self.callbacks
         while 1:
             data = self.socketfile.read()
-            if 'recv' in self.callbacks:
-                self.callbacks['recv'](self.clientsocket, data)
+            if data != '' and 'receive' in self.callbacks:
+                self.callbacks['receive'](self.clientsocket_proxy, data)
         
     def on(self, event, function):
+        print 'added callback for ' + event
         self.callbacks[event] = function
 
     
 class SocketWrapper(object):
-    @staticmethod
     def listen(self, port, established):
         serversocket = socket.socket(
             socket.AF_INET, socket.SOCK_STREAM)
         serversocket.bind(('127.0.0.1', port))
         serversocket.listen(5)
         while 1:
-            ClientSocketWrapper(*serversocket.accept())
-                
+            c = ClientSocketWrapper(*serversocket.accept())
+            established(c)
+            c.start()
+
+            
 class lua_net(object):
     TCP = None
     
@@ -82,7 +102,8 @@ class lua_net(object):
     def createServer(*args):
         return SocketWrapper()
 
-        
+
+
         
 lua.globals()['file'] = lua_file
 lua.globals()['gpio'] = lua_gpio

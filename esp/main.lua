@@ -3,7 +3,7 @@ if sv ~= nil then
    sv:close()
 end
 
-
+print("started")
 
 function first_initialization()
    debug_output = true
