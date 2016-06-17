@@ -20,6 +20,5 @@ from login.views import LoginView
 
 urlpatterns = [
     url(r'^admin/', include(admin.site.urls)),
-    url(r'^login', LoginView.as_view()),
-    
+    url(r'^login', LoginView.as_view(), name="login"), 
 ]

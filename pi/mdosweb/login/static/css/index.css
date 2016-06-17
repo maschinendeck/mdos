@@ -12,3 +12,23 @@
 .main button {
     padding-top: 20px;
 }
+
+.messages li {
+    list-style-type: none;
+    padding: 5px;
+    margin-top: 3px;
+    
+}
+
+.messages li.info {
+    background-color: #9f9;
+}
+
+.messages li.error {
+    background-color: #f99;
+}
+
+input[name="pin"] {
+    font-size: 40px;
+    height: 45px;
+}

@@ -6,6 +6,7 @@ import hmac
 import random
 import struct
 import logging
+import sys
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -13,7 +14,7 @@ logging.basicConfig(
 )
 
 
-ESP_IP = '10.172.44.91'
+ESP_IP = '10.172.191.159'
 ESP_PORT = 42001
 
 LISTEN_ADDR = 'localhost'
@@ -164,6 +165,18 @@ class DoorConnection(object):
             raise MdosProtocolException("In message 0x05: illegal hmac. Expected %s..., received %s..." % (expmac[:8], mac[:8]))
         return True
 
+class DummyDoorConnection(DoorConnection):
+
+    def __init__(self, *args):
+        pass
+
+    def startSession(self, *args):
+        return 42
+
+    def finishSession(self, *args):
+        return True
+    
+    
 if __name__ == "__main__":
     #create an INET, STREAMing socket
     serversocket = socket.socket(
@@ -174,9 +187,13 @@ if __name__ == "__main__":
     #become a server socket
     serversocket.listen(5)
 
-    door = DoorConnection(ESP_IP, ESP_PORT, KEYSET)
-
-    logging.info("Server started.")
+    if not '--dummy' in sys.argv:
+        door = DoorConnection(ESP_IP, ESP_PORT, KEYSET)
+        logging.info("Server started.")
+    else:
+        door = DummyDoorConnection()
+        logging.info("Dummy server started.")
+        
     try:
         while 1:
             #accept connections from outside
