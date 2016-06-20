@@ -7,6 +7,7 @@ import random
 import struct
 import logging
 import sys
+import optparse
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -14,18 +15,13 @@ logging.basicConfig(
 )
 
 
-#ESP_IP = '10.172.191.159'
-ESP_IP = '127.0.0.1'
+ESP_ADDR = '10.172.191.159'
 ESP_PORT = 42001
 
 LISTEN_ADDR = 'localhost'
 LISTEN_PORT = 42002
 
-KEYSET = {
-    0: 0xdecafbeddeadbeefcaffeebabe421337,
-    1: 0xbe421337decafbeddeadbeefcaffeeba,
-    2: 0xcaffeebabe421337decafbeddeadbeef,
-}
+DEFAULT_KEYSET = "../keysets/testing"
 
 class MdosProtocolException(Exception):
     pass
@@ -33,11 +29,24 @@ class MdosProtocolException(Exception):
 class DoorConnection(object):
     BUFFER_SIZE = 64
     
-    def __init__(self, ip, port, keyset):
-        self.keyset = keyset
+    def __init__(self, ip, port, keyset_file):
+        self.init_keyset(keyset_file)
         self.sessions = {}
         self.ip = ip
         self.port = port
+
+    def init_keyset(self, keyset_file):
+        self.keyset = {}
+        with open(keyset_file, 'r') as f:
+            i = 0
+            for line in f:
+                line = line.strip()
+                if line.startswith('#') or len(line) == 0:
+                    continue
+                self.keyset[i] = int(line, 16)
+                i += 1
+        if i != 3:
+            sys.exit("More than three keys in keyset file: %s" % keyset_file)
 
     def connect(self):
         logging.debug("door connection started. ip=%s:%d" % (self.ip, self.port))
@@ -177,8 +186,24 @@ class DummyDoorConnection(DoorConnection):
     
 if __name__ == "__main__":
 
-    if '--test' in sys.argv:
-        door = DoorConnection(ESP_IP, ESP_PORT, KEYSET)
+    parser = optparse.OptionParser()
+    parser.add_option("-t", "--test", dest='test', default=False, help='Test the lock without listening for commands.', action='store_true')
+    parser.add_option("-s", "--simulate", dest='simulate', default=False, help='Just listen for commands without communicating to the lock.', action='store_true')
+    parser.add_option("-l", "--listen-addr", dest='listenaddr', default=LISTEN_ADDR, help='Listen to this IP (default: %s).' % LISTEN_ADDR)
+    parser.add_option("-p", "--listen-port", dest='listenport', default=LISTEN_PORT, help='Listen to this port (default: %d).' % LISTEN_PORT)
+    parser.add_option('-d', "--door-addr", dest='dooraddr', default=ESP_ADDR, help='Communicate to the door lock on this ip (default: %s).' % ESP_ADDR)
+    parser.add_option('-b', "--door-port", dest='doorport', default=ESP_PORT, help='Communicate to the door lock on this port (default: %d).' % ESP_PORT)
+    parser.add_option('-k', "--keyset-file", dest="keyset", default=DEFAULT_KEYSET, help='Keyset file (default: %s).' % DEFAULT_KEYSET)
+    options, args = parser.parse_args(sys.argv)
+
+    if not options.simulate:
+        door = DoorConnection(options.dooraddr, int(options.doorport), options.keyset)
+        logging.info("Server started.")
+    else:
+        door = DummyDoorConnection()
+        logging.info("Dummy server started.")
+        
+    if options.test:
         sid = door.startSession(True)
         pc_str = raw_input('Presence challenge: ').strip()
         pc = ''.join(DoorConnection.toBytes(int(c), 1) for c in pc_str)
@@ -190,17 +215,10 @@ if __name__ == "__main__":
         socket.AF_INET, socket.SOCK_STREAM)
     #bind the socket to a public host,
     # and a well-known port
-    serversocket.bind((LISTEN_ADDR, LISTEN_PORT))
+    serversocket.bind(options.listenaddr, options.listenport)
     #become a server socket
     serversocket.listen(5)
 
-    if not '--dummy' in sys.argv:
-        door = DoorConnection(ESP_IP, ESP_PORT, KEYSET)
-        logging.info("Server started.")
-    else:
-        door = DummyDoorConnection()
-        logging.info("Dummy server started.")
-        
     try:
         while 1:
             #accept connections from outside

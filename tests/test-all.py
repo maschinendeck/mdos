@@ -83,9 +83,8 @@ class ClientSocketWrapper():
         
         data = self.clientsocket.recv(1024)
         if data != '':
-            print "Received: %r" % data
+            print "SIM: Received: %r" % data
         if data != '' and 'receive' in self.callbacks:
-            print "SIM: Calling receive callback:"
             self.callbacks['receive'](self.clientsocket_proxy, data)
         
     def on(self, event, function):
@@ -182,12 +181,15 @@ class lua_tmr(object):
             lua_fun_queue.append(handler)
         lua_tmr.slots[num] = threading.Timer(timeout/1000, run_timer)
         
-        
+
+def lua_print(text):
+    print "LUA: %s" % text
         
 lua.globals()['file'] = lua_file
 lua.globals()['gpio'] = lua_gpio
 lua.globals()['net'] = lua_net
 lua.globals()['tmr'] = lua_tmr
+lua.globals()['print'] = lua_print
 lua.globals()['crypto'] = lua_crypto
 for fun in ['off', 'write_open', 'write_fail', 'write_num_reverse']:
     lua.globals()['disp_%s' % fun] = getattr(lua_display, fun)
