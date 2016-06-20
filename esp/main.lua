@@ -6,15 +6,24 @@ end
 print("started")
 
 function first_initialization()
-   debug_output = true
-
    gpio.mode(1, gpio.OUTPUT)
    gpio.write(1, gpio.LOW)
 
+   load_config()
    load_keys()
-   
-   cnt_rand_insecure = 9999
    load_cnt_rand_secure()
+   
+   reset()
+end
+
+function reset()
+   if tmr.state(1) ~= nil then
+      tmr.unregister(1)
+   end
+   if current_connection ~= nil then
+      current_connection:close()
+   end
+   current_connection = nil
 
    state = 0
    tc = nil
@@ -22,7 +31,17 @@ function first_initialization()
    oc = nil
    pc = nil
    mode = nil
+end
 
+function load_config()
+   file.open("config.json", "r")
+   local s = file.read(1024)
+   file.close()
+   local config = cjson.decode(s)
+   debug_output = config["debug"]
+   cnt_rand_insecure = config["cnt_rand_insecure_seed"]
+   relay_timeout = config["relay_timeout"]
+   protocol_timeout = config["protocol_timeout"]
 end
 
 function load_keys()
@@ -68,21 +87,29 @@ function printd(s, v)
    end
 end
 
-function tmr_handler()
+-- protocol_tmr (id 1) aborts the protocol
+
+function start_protocol_tmr()
+   tmr.register(1, protocol_timeout, tmr.ALARM_SINGLE, reset)
+   tmr.start(1)
+end
+
+-- relay_tmr (id 0) releases the relay and switches off the display
+function relay_tmr_handler()
    gpio.write(1, gpio.LOW) -- switch off relay
    tmr.unregister(0) -- reset timer
    disp_off() -- switch off display
 end
 
-function tmr_start()
-   tmr.register(0, 3000, tmr.ALARM_SINGLE, tmr_handler)
+function start_relay_tmr()
+   tmr.register(0, relay_timeout, tmr.ALARM_SINGLE, relay_tmr_handler)
    tmr.start(0)
 end
 
 function open_door()
    gpio.write(1, gpio.HIGH)
    disp_write_open()
-   tmr_start()
+   start_relay_tmr()
 end
 
 function cnt_padding(cnt)
@@ -159,12 +186,7 @@ end
 
 function disc(c)
    printd ("disconnected")
-   state = 0
-   tc = nil
-   nc = nil
-   oc = nil
-   pc = nil
-   mode = nil
+   reset()
 end
 
 
@@ -190,6 +212,8 @@ function process_pl_2(pl)
    printd ("h_rec ", h_rec)
    printd ("h_own ", h_own)
    if h_rec == h_own then
+      relay_tmr_handler() -- reset timer
+
       local msgid = string.char(0x03)
       oc = rand_secure()
       printd ("oc ", oc)
@@ -226,12 +250,10 @@ function process_pl_4(pl)
    if h_rec == h_own then
       printd ("OK")
       open_door()
-      --tmr.delay(4000000)
-      --gpio.write(1, gpio.LOW)
+      reset()
       local msgid = string.char(0x05)
       local h = crypto.hmac("sha256", ac, keys["K2"])
       local msg = msgid .. h
-      state = 0
       return msg
    end
    return nil
@@ -249,6 +271,8 @@ function recv(c, pl)
       printd "PING/PONG"
       msg = string.char(0x42)
    elseif state == 0 and pl:len() == 2 and pl:byte(1) == 0x0 and pl:byte(2) == 0x42 then
+      current_connection = c
+      start_protocol_tmr()
       msg = process_pl_0(pl)
    elseif state == 1 and pl:len() == 50 and pl:byte(1) == 0x2 then
       msg = process_pl_2(pl)
@@ -261,8 +285,8 @@ function recv(c, pl)
    else
       c:close()
       disp_write_fail()
-      tmr_start()
-      state = 0
+      start_relay_tmr()
+      reset()
    end
 end
 

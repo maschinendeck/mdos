@@ -1,0 +1,6 @@
+{
+    debug: True,
+    cnt_rand_insecure_seed: 9999,
+    relay_timeout: 3000,
+    protocol_timeout: 30000
+}
