@@ -58,9 +58,13 @@ function parse_key(keystr)
    return key
 end
 
-function printd(s)
+function printd(s, v=nil)
    if debug_output then
-      print(s)
+      if v == nil then
+	 print(s)
+      else
+	 print(s .. explode_string(v))
+      end
    end
 end
 
@@ -168,7 +172,7 @@ function process_pl_0(pl)
    printd "0:"
    local msgid = string.char(0x01)
    tc = rand_insecure()
-   printd ("tc " .. explode_string(tc))
+   printd ("tc ", tc)
    local msg = msgid .. tc
    state = state + 1
    return msg
@@ -181,14 +185,14 @@ function process_pl_2(pl)
    nc = pl:sub(3,18)
    local h_rec = pl:sub(19,50)
    local h_own = crypto.hmac("sha256", tc .. mode .. nc, keys["K0"])
-   printd ("mode " .. explode_string(mode))
-   printd ("nc " .. explode_string(nc))
-   printd ("h_rec " .. explode_string(h_rec))
-   printd ("h_own " .. explode_string(h_own))
+   printd ("mode ", mode)
+   printd ("nc ", nc)
+   printd ("h_rec ", h_rec)
+   printd ("h_own ", h_own)
    if h_rec == h_own then
       local msgid = string.char(0x03)
       oc = rand_secure()
-      printd ("oc " .. explode_string(oc))
+      printd ("oc ", oc)
       if mode == string.char(0x01) then
 	 local pc_src = rand_secure()
 	 local pc_num = (pc_src:byte(1) * 256 + pc_src:byte(2)) % 10000
@@ -203,7 +207,7 @@ function process_pl_2(pl)
 	 pc = string.char(0xff) .. string.char(0xff) .. string.char(0xff) .. string.char(0xff)
 	 return nil
       end
-      printd ("pc " .. explode_string(pc))
+      printd ("pc ", pc)
       local msg = msgid .. oc
       state = state + 1
       return msg
@@ -216,9 +220,9 @@ function process_pl_4(pl)
    ac = pl:sub(2,17)
    local h_rec = pl:sub(18,49)
    local h_own = crypto.hmac("sha256", nc .. pc .. oc .. ac, keys["K1"])
-   printd ("ac " .. explode_string(ac))
-   printd ("h_rec " .. explode_string(h_rec))
-   printd ("h_own " .. explode_string(h_own))
+   printd ("ac ", ac)
+   printd ("h_rec ", h_rec)
+   printd ("h_own ", h_own)
    if h_rec == h_own then
       printd ("OK")
       open_door()
@@ -238,7 +242,9 @@ function recv(c, pl)
    local ip, port = c:getpeer()
    printd ("data from " .. ip)
    local msg = nil
-   printd ("state: " .. state .. " received " .. pl:len() .. " bytes: " .. explode_string(pl) .. " string: " .. pl)
+   if debug_output then
+      print ("state: " .. state .. " received " .. pl:len() .. " bytes: " .. explode_string(pl) .. " string: " .. pl)
+   end
    if pl:len() == 1 and pl:byte(1) == 0x23 then
       printd "PING/PONG"
       msg = string.char(0x42)
