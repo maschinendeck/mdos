@@ -61,7 +61,7 @@ function load_keys()
       keys[k] = parse_key(line)
       if debug_output then
 	 -- note that if we would use printd here, explode_string would be executed also in non-debug mode
-	 print("init: " .. k .. "=" explode_string(keys[k]))
+	 print("init: " .. k .. "=" .. explode_string(keys[k]))
       end
       line = file.readline()
    end
