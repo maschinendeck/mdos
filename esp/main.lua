@@ -30,9 +30,9 @@ function first_initialization()
 end
 
 function printd(s)
-   if debug_output then
+   -- if debug_output then
       print(s)
-   end
+   -- end
 end
 
 function tmr_handler()
@@ -209,7 +209,7 @@ function recv(c, pl)
    local ip, port = c:getpeer()
    printd ("data from " .. ip)
    local msg = nil
-   printd ("received " .. pl:len() .. " bytes: " .. explode_string(pl) .. " string: " .. pl)
+   printd ("state: " .. state .. " received " .. pl:len() .. " bytes: " .. explode_string(pl) .. " string: " .. pl)
    if pl:len() == 1 and pl:byte(1) == 0x23 then
       printd "PING/PONG"
       msg = string.char(0x42)
@@ -221,12 +221,13 @@ function recv(c, pl)
       msg = process_pl_4(pl)
    end
    if msg ~= nil then
-      printd ("send " .. msg:len() .. " bytes: " .. explode_string(msg) .. " string: " .. msg)
+      -- printd ("send " .. msg:len() .. " bytes: " .. explode_string(msg) .. " string: " .. msg)
       c:send(msg)
    else
       c:close()
       disp_write_fail()
       tmr_start()
+      state = 0
    end
 end
 

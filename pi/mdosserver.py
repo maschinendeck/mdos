@@ -14,7 +14,8 @@ logging.basicConfig(
 )
 
 
-ESP_IP = '10.172.191.159'
+#ESP_IP = '10.172.191.159'
+ESP_IP = '127.0.0.1'
 ESP_PORT = 42001
 
 LISTEN_ADDR = 'localhost'
@@ -42,6 +43,7 @@ class DoorConnection(object):
         logging.debug("door connection started. ip=%s:%d" % (self.ip, self.port))
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((self.ip, self.port))
+        self.socket.settimeout(3)
 
     def disconnect(self):
         self.socket.close()
@@ -53,11 +55,7 @@ class DoorConnection(object):
     def send(self, msg):
         l = len(msg)
         logging.debug("Send message: %s" % self.printBytes(msg))
-        sent = self.socket.send(msg) # ''.join(chr(msg)))
-        if sent < l:
-            logging.debug("Only %d of %d bytes sent. Retrying." % (sent, l))
-            
-            #self.send(msg[sent:])
+        self.socket.sendall(msg)
 
     def recv(self, checkMessageIdentifier=None, checkMessageLength=None):
         logging.debug("Waiting for message.")
@@ -175,9 +173,16 @@ class DummyDoorConnection(DoorConnection):
 
     def finishSession(self, *args):
         return True
-    
+
     
 if __name__ == "__main__":
+
+    if '--test' in sys.argv:
+        door = DoorConnection(ESP_IP, ESP_PORT, KEYSET)
+        sid = door.startSession(True)
+        door.finishSession(sid, '1234')
+        sys.exit("Test finished")
+    
     #create an INET, STREAMing socket
     serversocket = socket.socket(
         socket.AF_INET, socket.SOCK_STREAM)
