@@ -6,13 +6,22 @@ import sys
 import hashlib
 import hmac
 from Crypto.Cipher import AES
+import json
 
 lua = LuaRuntime(unpack_returned_tuples=True, encoding=None)
 
 lua_fun_queue = []
 
+MAINFILE = '../esp/main.lua'
+
+def get_file_contents(f):
+    with open(f, 'r') as f:
+        return f.read()
+
 class lua_file(object):
-    files = {}
+    files = {
+        'config.json': get_file_contents('../esp/config.json'),
+    }
     last_file = None
     
     @staticmethod
@@ -37,6 +46,11 @@ class lua_file(object):
     def close():
         lua_file.last_file = None
 
+class lua_cjson(object):
+    @staticmethod
+    def decode(s):
+        print s
+        return json.loads(s)
 
 class lua_gpio(object):
     OUTPUT = None
@@ -176,6 +190,10 @@ class lua_tmr(object):
             del lua_tmr.slots[num]
 
     @staticmethod
+    def state(num):
+        return None if num not in lua_tmr.slots else True
+            
+    @staticmethod
     def register(num, timeout, mode, handler):
         def run_timer():
             lua_fun_queue.append(handler)
@@ -191,12 +209,9 @@ lua.globals()['net'] = lua_net
 lua.globals()['tmr'] = lua_tmr
 lua.globals()['print'] = lua_print
 lua.globals()['crypto'] = lua_crypto
+lua.globals()['cjson'] = lua_cjson
 for fun in ['off', 'write_open', 'write_fail', 'write_num_reverse']:
     lua.globals()['disp_%s' % fun] = getattr(lua_display, fun)
 
-with open('../esp/main.lua') as f:
-    mainfile = f.read()
-
-luapreamble = """ """
-    
-lua.execute(luapreamble + mainfile)
+luafile = get_file_contents(MAINFILE)    
+lua.execute(luafile)
