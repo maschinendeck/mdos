@@ -58,7 +58,7 @@ function parse_key(keystr)
    return key
 end
 
-function printd(s, v=nil)
+function printd(s, v)
    if debug_output then
       if v == nil then
 	 print(s)
