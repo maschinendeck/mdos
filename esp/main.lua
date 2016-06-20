@@ -11,12 +11,8 @@ function first_initialization()
    gpio.mode(1, gpio.OUTPUT)
    gpio.write(1, gpio.LOW)
 
-   K0 = string.char(0xde,0xca,0xfb,0xed,0xde,0xad,0xbe,0xef,0xca,0xff,0xee,0xba,0xbe,0x42,0x13,0x37)
-   K1 = string.char(0xbe,0x42,0x13,0x37,0xde,0xca,0xfb,0xed,0xde,0xad,0xbe,0xef,0xca,0xff,0xee,0xba)
-   K2 = string.char(0xca,0xff,0xee,0xba,0xbe,0x42,0x13,0x37,0xde,0xca,0xfb,0xed,0xde,0xad,0xbe,0xef)
-   KH0 = string.char(0x01,0x23,0x45,0x67,0x89,0x01,0x23,0x46,0x78,0x90,0x12,0x34,0x56,0x78,0x90,0x12)
-   KH1 = string.char(0x98,0x76,0x54,0x32,0x10,0x98,0x76,0x54,0x32,0x10,0x98,0x76,0x54,0x32,0x10,0x98)
-
+   load_keys()
+   
    cnt_rand_insecure = 9999
    load_cnt_rand_secure()
 
@@ -27,6 +23,39 @@ function first_initialization()
    pc = nil
    mode = nil
 
+end
+
+function load_keys()
+   file.open("keyfile", "r")
+   keys = {K0=nil, K1=nil, K2=nil, KH0=nil, KH1=nil}
+   local line = file.readline()
+   for k,v in ipairs(keys) do
+      if line == nil then
+	 error("keyfile too short")
+      end
+      while line:find("#") ~= nil do
+	 line = file.readline()
+	 if line == nil then
+	    error("keyfile too short")
+	 end
+      end
+      keys[k] = parse_key(line)
+      if debug_output then
+	 -- note that if we would use printd here, explode_string would be executed also in non-debug mode
+	 print("init: " .. k .. "=" explode_string(keys[k]))
+      end
+      line = file.readline()
+   end
+   file.close()
+end
+
+function parse_key(keystr)
+   local l = keystr:len()
+   local key = ""
+   for i=1,l,2 do
+      key = key .. tonumber(keystr:sub(i,i+1),16)
+   end
+   return key
 end
 
 function printd(s)
@@ -64,7 +93,7 @@ function cnt_padding(cnt)
 end
 
 function rand_insecure()
-   result = crypto.encrypt("AES-ECB", KH0, cnt_padding(cnt_rand_insecure))
+   result = crypto.encrypt("AES-ECB", keys["KH0"], cnt_padding(cnt_rand_insecure))
    cnt_rand_insecure = cnt_rand_insecure + 1
    return result
 end
@@ -90,7 +119,7 @@ end
 
 
 function rand_secure()
-   result = crypto.encrypt("AES-ECB", KH1, cnt_padding(cnt_rand_secure))
+   result = crypto.encrypt("AES-ECB", keys["KH1"], cnt_padding(cnt_rand_secure))
    cnt_rand_secure = cnt_rand_secure + 1
    if cnt_rand_secure % 128 == 0 then
       save_cnt_rand_secure()
@@ -151,7 +180,7 @@ function process_pl_2(pl)
    local mode = pl:sub(2,2)
    nc = pl:sub(3,18)
    local h_rec = pl:sub(19,50)
-   local h_own = crypto.hmac("sha256", tc .. mode .. nc, K0)
+   local h_own = crypto.hmac("sha256", tc .. mode .. nc, keys["K0"])
    printd ("mode " .. explode_string(mode))
    printd ("nc " .. explode_string(nc))
    printd ("h_rec " .. explode_string(h_rec))
@@ -186,7 +215,7 @@ function process_pl_4(pl)
    printd "4:"
    ac = pl:sub(2,17)
    local h_rec = pl:sub(18,49)
-   local h_own = crypto.hmac("sha256", nc .. pc .. oc .. ac, K1)
+   local h_own = crypto.hmac("sha256", nc .. pc .. oc .. ac, keys["K1"])
    printd ("ac " .. explode_string(ac))
    printd ("h_rec " .. explode_string(h_rec))
    printd ("h_own " .. explode_string(h_own))
@@ -196,7 +225,7 @@ function process_pl_4(pl)
       --tmr.delay(4000000)
       --gpio.write(1, gpio.LOW)
       local msgid = string.char(0x05)
-      local h = crypto.hmac("sha256", ac, K2)
+      local h = crypto.hmac("sha256", ac, keys["K2"])
       local msg = msgid .. h
       state = 0
       return msg
