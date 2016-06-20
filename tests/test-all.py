@@ -21,6 +21,7 @@ def get_file_contents(f):
 class lua_file(object):
     files = {
         'config.json': get_file_contents('../esp/config.json'),
+        'keys.json': get_file_contents('../keysets/testing.json'),
     }
     last_file = None
     
