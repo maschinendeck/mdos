@@ -9,6 +9,8 @@ from Crypto.Cipher import AES
 
 lua = LuaRuntime(unpack_returned_tuples=True, encoding=None)
 
+lua_fun_queue = []
+
 class lua_file(object):
     files = {}
     last_file = None
@@ -117,6 +119,10 @@ class SocketWrapper(object):
                     print "SIM: Socket was closed."
                     del self.acceptedsockets[i]
 
+            while len(lua_fun_queue) > 0:
+                lua_fun_queue.pop(0)()
+                
+
 class lua_crypto(object):
     @staticmethod
     def encrypt(mode, key, message):
@@ -154,7 +160,7 @@ class lua_display(object):
 
     @staticmethod
     def write_num_reverse(num):
-        print "Display: %s" % "%04d"[-1::-1]
+        print "Display: %s" % ("%04d" % num)[-1::-1]
 
 class lua_tmr(object):
     slots = {}
@@ -172,7 +178,9 @@ class lua_tmr(object):
 
     @staticmethod
     def register(num, timeout, mode, handler):
-        lua_tmr.slots[num] = threading.Timer(timeout/1000, handler)
+        def run_timer():
+            lua_fun_queue.append(handler)
+        lua_tmr.slots[num] = threading.Timer(timeout/1000, run_timer)
         
         
         

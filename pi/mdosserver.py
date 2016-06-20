@@ -180,7 +180,9 @@ if __name__ == "__main__":
     if '--test' in sys.argv:
         door = DoorConnection(ESP_IP, ESP_PORT, KEYSET)
         sid = door.startSession(True)
-        door.finishSession(sid, '1234')
+        pc_str = raw_input('Presence challenge: ').strip()
+        pc = ''.join(DoorConnection.toBytes(int(c), 1) for c in pc_str)
+        door.finishSession(sid, pc)
         sys.exit("Test finished")
     
     #create an INET, STREAMing socket

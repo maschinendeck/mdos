@@ -30,9 +30,9 @@ function first_initialization()
 end
 
 function printd(s)
-   -- if debug_output then
+   if debug_output then
       print(s)
-   -- end
+   end
 end
 
 function tmr_handler()
