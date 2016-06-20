@@ -45,27 +45,18 @@ function load_config()
 end
 
 function load_keys()
-   file.open("keyfile", "r")
-   keys = {K0=nil, K1=nil, K2=nil, KH0=nil, KH1=nil}
-   local line = file.readline()
-   for k,v in ipairs(keys) do
-      if line == nil then
-	 error("keyfile too short")
-      end
-      while line:find("#") ~= nil do
-	 line = file.readline()
-	 if line == nil then
-	    error("keyfile too short")
-	 end
-      end
-      keys[k] = parse_key(line)
+   file.open("keys.json", "r")
+   local keystr = file.read(1024)
+   file.close()
+   local keytbl = cjson.decode(keystr)
+   keys = {}
+   for k,v in ipairs(keytbl) do
+      keys[k] = parse_key(v)
       if debug_output then
 	 -- note that if we would use printd here, explode_string would be executed also in non-debug mode
 	 print("init: " .. k .. "=" .. explode_string(keys[k]))
       end
-      line = file.readline()
    end
-   file.close()
 end
 
 function parse_key(keystr)
