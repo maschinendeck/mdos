@@ -8,6 +8,7 @@ import struct
 import logging
 import sys
 import optparse
+import json
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -36,18 +37,8 @@ class DoorConnection(object):
         self.port = port
 
     def init_keyset(self, keyset_file):
-        self.keyset = {}
-        with open(keyset_file, 'r') as f:
-            i = 0
-            for line in f:
-                line = line.strip()
-                if line.startswith('#') or len(line) == 0:
-                    continue
-                self.keyset[i] = int(line, 16)
-                i += 1
-        if i != 3:
-            sys.exit("More than three keys in keyset file: %s" % keyset_file)
-
+        self.keyset = json.load(keyset_file)
+        
     def connect(self):
         logging.debug("door connection started. ip=%s:%d" % (self.ip, self.port))
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -81,7 +72,7 @@ class DoorConnection(object):
         return inp
 
     def hmac(self, msg, keyid):
-        out = hmac.new(self.toBytes(self.keyset[keyid]), msg, digestmod=hashlib.sha256).digest()
+        out = hmac.new(self.toBytes(self.keyset["k" + keyid]), msg, digestmod=hashlib.sha256).digest()
     
         logging.debug("Macing: %s -> %s" % (self.printBytes(msg), self.printBytes(out)))
         return out
