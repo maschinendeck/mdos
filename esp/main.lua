@@ -38,10 +38,11 @@ function load_config()
    local s = file.read(1024)
    file.close()
    local config = cjson.decode(s)
-   debug_output = config["debug"]
-   cnt_rand_insecure = config["cnt_rand_insecure_seed"]
-   relay_timeout = config["relay_timeout"]
-   protocol_timeout = config["protocol_timeout"]
+   
+   debug_output = config.debug
+   cnt_rand_insecure = config.cnt_rand_insecure_seed
+   relay_timeout = config.relay_timeout
+   protocol_timeout = config.protocol_timeout
 end
 
 function load_keys()
@@ -50,8 +51,10 @@ function load_keys()
    file.close()
    local keytbl = cjson.decode(keystr)
    keys = {}
-   for k,v in ipairs(keytbl) do
+   for k,v in pairs(keytbl) do
+      print('a')
       keys[k] = parse_key(v)
+      print('b')
       if debug_output then
 	 -- note that if we would use printd here, explode_string would be executed also in non-debug mode
 	 print("init: " .. k .. "=" .. explode_string(keys[k]))
@@ -62,20 +65,23 @@ end
 function parse_key(keystr)
    local l = keystr:len()
    local key = ""
+   print (keystr)
    for i=1,l,2 do
-      key = key .. tonumber(keystr:sub(i,i+1),16)
+      print (key)
+      print(keystr:sub(i,i+1))
+      key = key .. string.char(tonumber(keystr:sub(i,i+1),16))
    end
    return key
 end
 
 function printd(s, v)
-   if debug_output then
+   --if debug_output then
       if v == nil then
 	 print(s)
       else
 	 print(s .. explode_string(v))
       end
-   end
+   --end
 end
 
 -- protocol_tmr (id 1) aborts the protocol
@@ -115,7 +121,7 @@ function cnt_padding(cnt)
 end
 
 function rand_insecure()
-   result = crypto.encrypt("AES-ECB", keys["KH0"], cnt_padding(cnt_rand_insecure))
+   result = crypto.encrypt("AES-ECB", keys["kh0"], cnt_padding(cnt_rand_insecure))
    cnt_rand_insecure = cnt_rand_insecure + 1
    return result
 end
@@ -141,7 +147,7 @@ end
 
 
 function rand_secure()
-   result = crypto.encrypt("AES-ECB", keys["KH1"], cnt_padding(cnt_rand_secure))
+   result = crypto.encrypt("AES-ECB", keys["kh1"], cnt_padding(cnt_rand_secure))
    cnt_rand_secure = cnt_rand_secure + 1
    if cnt_rand_secure % 128 == 0 then
       save_cnt_rand_secure()
@@ -197,7 +203,7 @@ function process_pl_2(pl)
    local mode = pl:sub(2,2)
    nc = pl:sub(3,18)
    local h_rec = pl:sub(19,50)
-   local h_own = crypto.hmac("sha256", tc .. mode .. nc, keys["K0"])
+   local h_own = crypto.hmac("sha256", tc .. mode .. nc, keys["k0"])
    printd ("mode ", mode)
    printd ("nc ", nc)
    printd ("h_rec ", h_rec)
@@ -234,7 +240,7 @@ function process_pl_4(pl)
    printd "4:"
    ac = pl:sub(2,17)
    local h_rec = pl:sub(18,49)
-   local h_own = crypto.hmac("sha256", nc .. pc .. oc .. ac, keys["K1"])
+   local h_own = crypto.hmac("sha256", nc .. pc .. oc .. ac, keys["k1"])
    printd ("ac ", ac)
    printd ("h_rec ", h_rec)
    printd ("h_own ", h_own)
@@ -243,7 +249,7 @@ function process_pl_4(pl)
       open_door()
       reset()
       local msgid = string.char(0x05)
-      local h = crypto.hmac("sha256", ac, keys["K2"])
+      local h = crypto.hmac("sha256", ac, keys["k2"])
       local msg = msgid .. h
       return msg
    end

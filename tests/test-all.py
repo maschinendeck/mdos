@@ -7,6 +7,7 @@ import hashlib
 import hmac
 from Crypto.Cipher import AES
 import json
+import copy
 
 lua = LuaRuntime(unpack_returned_tuples=True, encoding=None)
 
@@ -50,8 +51,8 @@ class lua_file(object):
 class lua_cjson(object):
     @staticmethod
     def decode(s):
-        print s
-        return json.loads(s)
+        print "SIM: decode %s" % s
+        return lua.table_from({str(k): v if type(v) != unicode else str(v) for k, v in json.loads(s).items()})
 
 class lua_gpio(object):
     OUTPUT = None
@@ -201,14 +202,15 @@ class lua_tmr(object):
         lua_tmr.slots[num] = threading.Timer(timeout/1000, run_timer)
         
 
-def lua_print(text):
-    print "LUA: %s" % text
+def lua_print(*text):
+    print "LUA: ",
+    print(text)
         
 lua.globals()['file'] = lua_file
 lua.globals()['gpio'] = lua_gpio
 lua.globals()['net'] = lua_net
 lua.globals()['tmr'] = lua_tmr
-lua.globals()['print'] = lua_print
+#lua.globals()['print'] = lua_print
 lua.globals()['crypto'] = lua_crypto
 lua.globals()['cjson'] = lua_cjson
 for fun in ['off', 'write_open', 'write_fail', 'write_num_reverse']:

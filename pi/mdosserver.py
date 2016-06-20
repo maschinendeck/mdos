@@ -22,7 +22,7 @@ ESP_PORT = 42001
 LISTEN_ADDR = 'localhost'
 LISTEN_PORT = 42002
 
-DEFAULT_KEYSET = "../keysets/testing"
+DEFAULT_KEYSET = "../keysets/testing.json"
 
 class MdosProtocolException(Exception):
     pass
@@ -37,7 +37,8 @@ class DoorConnection(object):
         self.port = port
 
     def init_keyset(self, keyset_file):
-        self.keyset = json.load(keyset_file)
+        with open(keyset_file, 'r') as f:
+            self.keyset = {k: int(v, 16) for k,v in json.loads(f.read()).items()}
         
     def connect(self):
         logging.debug("door connection started. ip=%s:%d" % (self.ip, self.port))
@@ -72,7 +73,7 @@ class DoorConnection(object):
         return inp
 
     def hmac(self, msg, keyid):
-        out = hmac.new(self.toBytes(self.keyset["k" + keyid]), msg, digestmod=hashlib.sha256).digest()
+        out = hmac.new(self.toBytes(self.keyset["k%d" % keyid]), msg, digestmod=hashlib.sha256).digest()
     
         logging.debug("Macing: %s -> %s" % (self.printBytes(msg), self.printBytes(out)))
         return out
