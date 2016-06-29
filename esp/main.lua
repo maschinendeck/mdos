@@ -43,6 +43,7 @@ function load_config()
    cnt_rand_insecure = config.cnt_rand_insecure_seed
    relay_timeout = config.relay_timeout
    protocol_timeout = config.protocol_timeout
+   server_ip = config.server_ip
 end
 
 function load_keys()
@@ -259,6 +260,10 @@ function recv(c, pl)
    local msg = nil
    local ip, port = c:getpeer()
    printd ("data from " .. ip)
+   if ip ~= server_ip then
+      c:close()
+   end
+   
    local msg = nil
    local final_step = false
    if debug_output then
