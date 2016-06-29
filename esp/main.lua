@@ -241,7 +241,6 @@ function process_pl_4(pl)
    if h_rec == h_own then
       printd ("OK")
       open_door()
-      reset()
       local msgid = string.char(0x05)
       local h = crypto.hmac("sha256", ac, keys["K2"])
       local msg = msgid .. h
@@ -255,6 +254,7 @@ function recv(c, pl)
    local ip, port = c:getpeer()
    printd ("data from " .. ip)
    local msg = nil
+   local final_step = false
    if debug_output then
       print ("state: " .. state .. " received " .. pl:len() .. " bytes: " .. explode_string(pl) .. " string: " .. pl)
    end
@@ -269,10 +269,14 @@ function recv(c, pl)
       msg = process_pl_2(pl)
    elseif state == 2 and pl:len() == 49 and pl:byte(1) == 0x4 then
       msg = process_pl_4(pl)
+      final_step = true
    end
    if msg ~= nil then
       -- printd ("send " .. msg:len() .. " bytes: " .. explode_string(msg) .. " string: " .. msg)
       c:send(msg)
+      if final_step then
+	 reset()
+      end
    else
       c:close()
       disp_write_fail()
