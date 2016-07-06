@@ -11,8 +11,8 @@ numbertable = { string.char(0x3f,0x0c),
 } 
 
 id  = 0
-sda = 4
-scl = 2
+sda = 6
+scl = 5
 addr = 0x70
 
 i2c.setup(id, sda, scl, i2c.SLOW)
