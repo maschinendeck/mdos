@@ -1,0 +1,14 @@
+[Unit]
+Description=MDOS Base Server
+After=network.target auditd.service
+
+[Service]
+EnvironmentFile=-/etc/default/mdos-base
+ExecStart=/usr/bin/python /opt/mdos/pi/mdosserver.py
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+Alias=mdos-base.service

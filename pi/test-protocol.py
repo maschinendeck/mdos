@@ -1,12 +1,18 @@
 #!/usr/bin/python
 
 import socket
+import sys
 
 MDOS_IP = '127.0.0.1'
 MDOS_PORT = 42002
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((MDOS_IP, MDOS_PORT))
+
+if len(sys.argv) > 1 and sys.argv[1] == '--close':
+    s.send('close\n')
+    sys.exit(0)
+    
 
 print "sent start"
 s.send('start\n')
