@@ -1,5 +1,10 @@
+led1 = 0
+led2 = 2
 
-
+gpio.mode(led1, gpio.OUTPUT)
+gpio.mode(led2, gpio.OUTPUT)
+gpio.write(led1, gpio.LOW)
+gpio.write(led2, gpio.LOW)
 
 
 -- Your Wifi connection data
@@ -28,6 +33,7 @@ function wait_for_wifi_conn ( )
          print ("ESP8266 mode is: " .. wifi.getmode ( ))
          print ("The module MAC address is: " .. wifi.ap.getmac ( ))
          print ("Config done, IP is " .. wifi.sta.getip ( ))
+	 gpio.write(led1, gpio.HIGH)
       end
    end)
 end

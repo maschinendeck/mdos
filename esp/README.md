@@ -1,12 +1,12 @@
 # PIN-Belegung ESP
 
-GPIO14 - SCL Display
-GPIO12 - SDA Display
-GPIO13 - LED im Display
-GPIO5 - Relay Dev-Board
+GPIO14 - SCL Display (nodemcu id 5)
+GPIO12 - SDA Display (nodemcu id 6)
+GPIO13 - LED im Display (nodemcu id 7)
+GPIO5 - Relay Dev-Board (nodemcu id 1)
 
-GPIO16 - LED1 Wandgehäuse
-GPIO4 - LED2 Wandgehäuse
+GPIO16 - LED1 Wandgehäuse (nodemcu id 0)
+GPIO4 - LED2 Wandgehäuse (nodemcu id 2)
 
 
 # Display

@@ -31,6 +31,9 @@ function reset()
    oc = nil
    pc = nil
    mode = nil
+
+   -- local debug output
+   gpio.write(led2, gpio.LOW)
 end
 
 function load_config()
@@ -283,6 +286,9 @@ function recv(c, pl)
       final_step = true
    end
    if msg ~= nil then
+      -- local debug output
+      gpio.write(led2, gpio.HIGH)
+
       -- printd ("send " .. msg:len() .. " bytes: " .. explode_string(msg) .. " string: " .. msg)
       c:send(msg)
       if final_step then
