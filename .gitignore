@@ -1,3 +1,4 @@
+keysets/production.json
 pi/mdosweb/static
 
 # Created by https://www.gitignore.io/api/emacs,django,python

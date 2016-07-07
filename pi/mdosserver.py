@@ -9,6 +9,10 @@ import logging
 import sys
 import optparse
 import json
+import os
+
+from gpiozero import DigitalOutputDevice
+from time import sleep
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -16,14 +20,27 @@ logging.basicConfig(
 )
 
 
-ESP_ADDR = '10.172.191.159'
-ESP_PORT = 42001
+ESP_ADDR = os.environ.get('ESP_ADDR', '10.172.3.3')
+ESP_PORT = int(os.environ.get('ESP_PORT', '42001'))
 
-LISTEN_ADDR = 'localhost'
-LISTEN_PORT = 42002
+LISTEN_ADDR = os.environ.get('LISTEN_ADDR', 'localhost')
+LISTEN_PORT = int(os.environ.get('LISTEN_PORT', '42002'))
 
-DEFAULT_KEYSET = "../keysets/testing.json"
+DEFAULT_KEYSET = os.environ.get('KEYSET', "../keysets/testing.json")
 
+GPIO_OPEN = DigitalOutputDevice(3, active_high=False, initial_value=False)
+GPIO_CLOSE = DigitalOutputDevice(2, active_high=False, initial_value=False)
+
+def openInnerDoor():
+    logging.debug("Opening inner door.")
+    GPIO_OPEN.blink(n=1)
+
+def closeInnerDoor():
+    logging.debug("Closing inner door.")
+    GPIO_CLOSE.blink(n=1)
+
+
+    
 class MdosProtocolException(Exception):
     pass
 
@@ -199,7 +216,9 @@ if __name__ == "__main__":
         sid = door.startSession(True)
         pc_str = raw_input('Presence challenge: ').strip()
         pc = ''.join(DoorConnection.toBytes(int(c), 1) for c in pc_str)
-        door.finishSession(sid, pc)
+        if door.finishSession(sid, pc):
+            openInnerDoor()
+            sleep(2)
         sys.exit("Test finished")
     
     #create an INET, STREAMing socket
@@ -207,7 +226,7 @@ if __name__ == "__main__":
         socket.AF_INET, socket.SOCK_STREAM)
     #bind the socket to a public host,
     # and a well-known port
-    serversocket.bind(options.listenaddr, options.listenport)
+    serversocket.bind((options.listenaddr, options.listenport))
     #become a server socket
     serversocket.listen(5)
 
@@ -226,6 +245,10 @@ if __name__ == "__main__":
                     pc = ''.join(DoorConnection.toBytes(int(c), 1) for c in cmd[2])
                     res = door.finishSession(sid, pc)
                     clientsocket.send('1' if res else '0')
+                    if res:
+                        openInnerDoor()
+                elif cmd[0] == 'close':
+                    closeInnerDoor()    
             except MdosProtocolException, e:
                 logging.exception(e)
                 clientsocket.send('e')
