@@ -1,3 +1,4 @@
+
 -- when this file is reloaded, close running server
 if sv ~= nil then
    sv:close()
@@ -56,9 +57,7 @@ function load_keys()
    local keytbl = cjson.decode(keystr)
    keys = {}
    for k,v in pairs(keytbl) do
-      print('a')
       keys[k] = parse_key(v)
-      print('b')
       if debug_output then
 	 -- note that if we would use printd here, explode_string would be executed also in non-debug mode
 	 print("init: " .. k .. "=" .. explode_string(keys[k]))
@@ -69,29 +68,34 @@ end
 function parse_key(keystr)
    local l = keystr:len()
    local key = ""
-   print (keystr)
+   printd (keystr)
    for i=1,l,2 do
-      print (key)
-      print(keystr:sub(i,i+1))
+      printd (key)
+      printd(keystr:sub(i,i+1))
       key = key .. string.char(tonumber(keystr:sub(i,i+1),16))
    end
    return key
 end
 
 function printd(s, v)
-   --if debug_output then
+   if debug_output then
       if v == nil then
 	 print(s)
       else
 	 print(s .. explode_string(v))
       end
-   --end
+   end
 end
 
 -- protocol_tmr (id 1) aborts the protocol
 
+function protocol_tmr_handler()
+   reset()
+   disp_off()
+end
+
 function start_protocol_tmr()
-   tmr.register(1, protocol_timeout, tmr.ALARM_SINGLE, reset)
+   tmr.register(1, protocol_timeout, tmr.ALARM_SINGLE, protocol_tmr_handler)
    tmr.start(1)
 end
 
@@ -305,7 +309,7 @@ end
 first_initialization()
 
 sv = net.createServer(net.TCP, 30)
-
+print("start server")
 sv:listen(42001, function(c)
 	     c:on("receive", recv)
 	     c:on("disconnection", disc)

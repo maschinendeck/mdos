@@ -1,9 +1,9 @@
-led1 = 0
-led2 = 2
+led1 = 2
+led2 = 0
 
 gpio.mode(led1, gpio.OUTPUT)
 gpio.mode(led2, gpio.OUTPUT)
-gpio.write(led1, gpio.LOW)
+gpio.write(led1, gpio.HIGH)
 gpio.write(led2, gpio.LOW)
 
 
@@ -11,18 +11,6 @@ gpio.write(led2, gpio.LOW)
 local SSID = "trier.freifunk.net"
 local SSID_PASSWORD = ""
 
-local function connect (conn, data)
-   local query_data
-
-   conn:on ("receive",
-      function (cn, req_data)
-         query_data = get_http_req (req_data)
-         print (query_data["METHOD"] .. " " .. " " .. query_data["User-Agent"])
-         cn:send ("Hello World from ESP8266 and NodeMCU!!")
-         -- Close the connection for the request
-         cn:close ( )
-      end)
-end
 
 function wait_for_wifi_conn ( )
    tmr.alarm (1, 1000, 1, function ( )
@@ -33,7 +21,8 @@ function wait_for_wifi_conn ( )
          print ("ESP8266 mode is: " .. wifi.getmode ( ))
          print ("The module MAC address is: " .. wifi.ap.getmac ( ))
          print ("Config done, IP is " .. wifi.sta.getip ( ))
-	 gpio.write(led1, gpio.HIGH)
+	 gpio.write(led1, gpio.LOW)
+  dofile("main.lua")
       end
    end)
 end
@@ -47,3 +36,4 @@ wifi.sta.autoconnect (1)
 wait_for_wifi_conn ( )
 
 dofile("display.lua")
+disp_off()
