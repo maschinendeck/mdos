@@ -1,0 +1,12 @@
+[submodule "arduino/src/arduinolibs"]
+	path = arduino/src/arduinolibs
+	url = https://github.com/rweather/arduinolibs.git
+[submodule "arduino/lib/arduinolibs"]
+	path = arduino/lib/arduinolibs
+	url = https://github.com/rweather/arduinolibs.git
+[submodule "arduino/lib/timer"]
+	path = arduino/lib/timer
+	url = https://github.com/JChristensen/Timer.git
+[submodule "arduino/lib/SimpleTimer"]
+	path = arduino/lib/SimpleTimer
+	url = https://github.com/schinken/SimpleTimer.git

@@ -127,3 +127,8 @@ target/
 
 # dotenv
 .env
+
+
+# platformio
+.pioenvs
+.clang_complete
