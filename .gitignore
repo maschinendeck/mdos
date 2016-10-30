@@ -132,3 +132,5 @@ target/
 # platformio
 .pioenvs
 .clang_complete
+
+.idea
