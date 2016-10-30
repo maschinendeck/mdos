@@ -74,7 +74,7 @@ object door2 extends App {
 
   object Public {
 
-    def sessionSignature(openingChallenge: BitVector): Task[Unit] = {
+    def sendOpen(openingChallenge: BitVector): Task[Unit] = {
       val sig = HMAC.sign(openingChallenge, K0)
       doorReceive.offer1(Msg.Open(sig)).map(_ => ())
     }
@@ -119,7 +119,7 @@ object door2 extends App {
         println(s"(public) msg: $msg")
 
         msg match {
-          case Msg.OpeningChallenge(challenge) => Public.sessionSignature(challenge)
+          case Msg.OpeningChallenge(challenge) => Public.sendOpen(challenge)
           case _ => Task.now(())
         }
 
