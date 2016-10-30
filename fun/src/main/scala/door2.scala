@@ -40,18 +40,21 @@ object door2 extends App {
 
   object Door {
 
-    // reset registers and go to idle state
     def idle: Task[Unit] = {
-      println("going back to idle, resetting registers")
       for {
+        _ <- Task {
+          println("reset registers, go to Idle state")
+        }
         _ <- doorState.set(DoorState.Idle)
         _ <- doorRandom1.set(None)
       } yield ()
     }
 
-    // send session signature challenge and go to wait-for-session-signature state
-    def sessionSignatureChallenge: Task[Unit] = {
+    def openingChallenge: Task[Unit] = {
       for {
+        _ <- Task {
+          println("send opening challenge and go to WaitForOpen state")
+        }
         _ <- doorState.set(DoorState.WaitForOpen)
         r1 = HMAC.random
         _ <- doorRandom1.set(Some(r1))
@@ -60,13 +63,11 @@ object door2 extends App {
     }
 
     def abort: Task[Unit] = {
-      println("abort")
-      idle
+      Task(println("abort")) flatMap (_ => idle)
     }
 
     def open: Task[Unit] = {
-      println("opening door")
-      idle
+      Task(println("opening door")) flatMap (_ => idle)
     }
 
   }
@@ -91,7 +92,7 @@ object door2 extends App {
         state match {
           case DoorState.Idle =>
             msg match {
-              case Msg.Trigger(0x43) => Door.sessionSignatureChallenge
+              case Msg.Trigger(0x43) => Door.openingChallenge
               case _ => Door.abort
             }
 
@@ -143,7 +144,7 @@ object door2 extends App {
 
 
 
-  println("refuse session signature msg without prior start")
+  println("refuse Open without prior start")
   doorReceive.offer1(Msg.Open(BitVector.empty)).unsafeRun()
   scala.io.StdIn.readLine
 
