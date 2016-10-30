@@ -61,9 +61,7 @@ object door3 extends App {
 
     def idle: Task[Unit] = {
       for {
-        _ <- Task {
-          println("reset registers, go to Idle state")
-        }
+        _ <- log("reset registers, go to Idle state")
         _ <- doorState.set(DoorState.Idle)
         _ <- doorOC.set(None)
       } yield ()
@@ -71,9 +69,7 @@ object door3 extends App {
 
     def openingChallenge(time: Long): Task[Unit] = {
       for {
-        _ <- Task {
-          println("send opening challenge and go to WaitForOpen state")
-        }
+        _ <- log("send opening challenge and go to WaitForOpen state")
         _ <- doorState.set(DoorState.WaitForOpen)
         random = HMAC.random
         _ <- doorOC.set(Some(random, time))
@@ -82,11 +78,15 @@ object door3 extends App {
     }
 
     def abort: Task[Unit] = {
-      Task(println("abort")) flatMap (_ => idle)
+      log("abort") flatMap (_ => idle)
     }
 
     def open: Task[Unit] = {
-      Task(println("opening door")) flatMap (_ => idle)
+      log("opening door") flatMap (_ => idle)
+    }
+
+    def log(msg: String): Task[Unit] = {
+      Task(println(s"(door) $msg"))
     }
 
   }
@@ -98,6 +98,10 @@ object door3 extends App {
       doorReceive.offer1(Msg.Open(sig)).map(_ => ())
     }
 
+    def log(msg: String): Task[Unit] = {
+      Task(println(s"(public) $msg"))
+    }
+
   }
 
 
@@ -106,7 +110,7 @@ object door3 extends App {
 
     ((doorReceive.dequeue zip doorState.continuous) zip doorOC.continuous).evalMap[Task, Task, Unit] {
       case ((msg, state), random1) =>
-        println(s"(door) state: $state random1: $random1 received: $msg")
+        println(s"(door) receive msg: $msg state: $state random1: $random1")
 
         state match {
           case DoorState.Idle =>
@@ -134,8 +138,8 @@ object door3 extends App {
 
     for {
       msg <- publicReceive.dequeue
+      _ <- Stream.eval(Public.log(s"receive msg: $msg"))
       _ <- Stream.eval[Task, Any] {
-        println(s"(public) msg: $msg")
 
         msg match {
           case Msg.OpeningChallenge(challenge, time) =>
@@ -144,8 +148,7 @@ object door3 extends App {
             if (math.abs(time - now) < 3600 * 1000) {
               Public.sendOpen(challenge, time)
             } else {
-              println("msg out of time window, ignoring")
-              Task.now(())
+              Public.log("msg out of time window, ignoring")
             }
 
           case _ => Task.now(())

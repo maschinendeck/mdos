@@ -57,9 +57,7 @@ object door2 extends App {
 
     def idle: Task[Unit] = {
       for {
-        _ <- Task {
-          println("reset registers, go to Idle state")
-        }
+        _ <- log("reset registers, go to Idle state")
         _ <- doorState.set(DoorState.Idle)
         _ <- doorOC.set(None)
       } yield ()
@@ -67,9 +65,7 @@ object door2 extends App {
 
     def openingChallenge: Task[Unit] = {
       for {
-        _ <- Task {
-          println("send opening challenge and go to WaitForOpen state")
-        }
+        _ <- log("send opening challenge and go to WaitForOpen state")
         _ <- doorState.set(DoorState.WaitForOpen)
         r1 = HMAC.random
         _ <- doorOC.set(Some(r1))
@@ -78,11 +74,15 @@ object door2 extends App {
     }
 
     def abort: Task[Unit] = {
-      Task(println("abort")) flatMap (_ => idle)
+      log("abort") flatMap (_ => idle)
     }
 
     def open: Task[Unit] = {
-      Task(println("opening door")) flatMap (_ => idle)
+      log("opening door") flatMap (_ => idle)
+    }
+
+    def log(msg: String): Task[Unit] = {
+      Task(println(s"(door) $msg"))
     }
 
   }
@@ -92,6 +92,10 @@ object door2 extends App {
     def sendOpen(openingChallenge: BitVector): Task[Unit] = {
       val sig = HMAC.sign(openingChallenge, K0)
       doorReceive.offer1(Msg.Open(sig)).map(_ => ())
+    }
+
+    def log(msg: String): Task[Unit] = {
+      Task(println(s"(public) $msg"))
     }
 
   }
@@ -130,8 +134,8 @@ object door2 extends App {
 
     for {
       msg <- publicReceive.dequeue
+      _ <- Stream.eval(Public.log(s"receive msg: $msg"))
       _ <- Stream.eval[Task, Any] {
-        println(s"(public) msg: $msg")
 
         msg match {
           case Msg.OpeningChallenge(challenge) => Public.sendOpen(challenge)
