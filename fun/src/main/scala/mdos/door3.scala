@@ -76,7 +76,6 @@ object door3 extends App {
         }
         _ <- doorState.set(DoorState.WaitForOpen)
         random = HMAC.random
-        time = System.currentTimeMillis
         _ <- doorOC.set(Some(random, time))
         _ <- publicReceive.offer1(Msg.OpeningChallenge(random, time))
       } yield ()
