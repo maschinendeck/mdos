@@ -1,7 +1,6 @@
 package mdos
 
 import fs2._
-import messages2._
 import scodec.bits._
 
 // experiment of a protocol version without number display
