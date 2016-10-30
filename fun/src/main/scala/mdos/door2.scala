@@ -3,7 +3,10 @@ package mdos
 import fs2._
 import scodec.bits._
 
-// experiment of a protocol version without number display
+// experiment of a protocol version
+// - no presence challenge
+// - no acknowledge
+// - no protocol configuration
 object door2 extends App {
 
   implicit val executorStrategy = fs2.Strategy.fromFixedDaemonPool(2)
