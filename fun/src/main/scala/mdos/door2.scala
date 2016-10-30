@@ -29,7 +29,7 @@ object door2 extends App {
 
   val doorState = fs2.async.signalOf[Task, DoorState](DoorState.Idle).unsafeRun()
 
-  // opening challenge register: random number, multiple protocol instances, prevent replay attacks
+  // opening challenge register, prevent replay attacks by adding a different random number
   val doorOC = fs2.async.signalOf[Task, Option[BitVector]](None).unsafeRun()
 
   val doorReceive = fs2.async.unboundedQueue[Task, Msg].unsafeRun()
