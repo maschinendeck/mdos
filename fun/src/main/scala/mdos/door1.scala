@@ -26,7 +26,7 @@ object door1 extends App {
   println(openCodec.encode(Msg.Open(1, math.pow(2, 24).toInt)).map(_.toBin))
   println(acknowledgeCodec.encode(Msg.Acknowledge(math.pow(2, 24).toInt)).map(_.toBin))
 
-  implicit val executorStrategy = fs2.Strategy.fromFixedDaemonPool(2)
+
 
 
 
