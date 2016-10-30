@@ -1,7 +1,7 @@
 package mdos
 
 import codecs._
-import messages1._
+import messages._
 import scodec.bits._
 
 // current protocol version

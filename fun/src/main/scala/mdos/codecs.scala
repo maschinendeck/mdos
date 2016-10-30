@@ -1,6 +1,6 @@
 package mdos
 
-import messages1._
+import messages._
 import scodec.codecs._
 import scodec.codecs.literals._
 import shapeless._

@@ -1,7 +1,7 @@
 package mdos
 
 
-object messages1 {
+object messages {
 
   sealed trait Mode
 
