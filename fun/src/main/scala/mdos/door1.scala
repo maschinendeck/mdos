@@ -1,8 +1,8 @@
-import fs2._
-import scodec.bits._
+package mdos
 
-import messages1._
 import codecs._
+import messages1._
+import scodec.bits._
 
 // current protocol version
 object door1 extends App {

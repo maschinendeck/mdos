@@ -1,7 +1,8 @@
+package mdos
+
 import fs2._
-import fs2.async.mutable.{Queue, Signal}
-import scodec.bits._
 import messages2._
+import scodec.bits._
 
 // experiment of a protocol version without number display
 object door2 extends App {
@@ -28,8 +29,8 @@ object door2 extends App {
 
   val doorState = fs2.async.signalOf[Task, DoorState](DoorState.Idle).unsafeRun()
 
-  // random1 register: session number
-  val doorRandom1 = fs2.async.signalOf[Task, Option[BitVector]](None).unsafeRun()
+  // opening challenge register: random number, multiple protocol instances, prevent replay attacks
+  val doorOC = fs2.async.signalOf[Task, Option[BitVector]](None).unsafeRun()
 
   val doorReceive = fs2.async.unboundedQueue[Task, Msg].unsafeRun()
 
@@ -46,7 +47,7 @@ object door2 extends App {
           println("reset registers, go to Idle state")
         }
         _ <- doorState.set(DoorState.Idle)
-        _ <- doorRandom1.set(None)
+        _ <- doorOC.set(None)
       } yield ()
     }
 
@@ -57,7 +58,7 @@ object door2 extends App {
         }
         _ <- doorState.set(DoorState.WaitForOpen)
         r1 = HMAC.random
-        _ <- doorRandom1.set(Some(r1))
+        _ <- doorOC.set(Some(r1))
         _ <- publicReceive.offer1(Msg.OpeningChallenge(r1))
       } yield ()
     }
@@ -85,7 +86,7 @@ object door2 extends App {
 
   val door: Stream[Task, Unit] = {
 
-    ((doorReceive.dequeue zip doorState.continuous) zip doorRandom1.continuous).evalMap[Task, Task, Unit] {
+    ((doorReceive.dequeue zip doorState.continuous) zip doorOC.continuous).evalMap[Task, Task, Unit] {
       case ((msg, state), random1) =>
         println(s"(door) state: $state random1: $random1 received: $msg")
 

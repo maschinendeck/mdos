@@ -1,3 +1,5 @@
+package mdos
+
 import java.security.MessageDigest
 
 import scodec.bits.BitVector

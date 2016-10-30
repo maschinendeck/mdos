@@ -1,3 +1,5 @@
+package mdos
+
 import scodec.bits.BitVector
 
 object messages2 {

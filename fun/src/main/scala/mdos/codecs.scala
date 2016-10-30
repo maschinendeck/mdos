@@ -1,8 +1,9 @@
-import scodec.bits._
+package mdos
+
+import messages1._
 import scodec.codecs._
 import scodec.codecs.literals._
 import shapeless._
-import messages1._
 
 // binary codecs for messages
 object codecs {
