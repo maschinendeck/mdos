@@ -22,7 +22,6 @@ static char K2[] = { 0xca, 0xff, 0xee, 0xba, 0xbe, 0x42, 0x13, 0x37, 0xde, 0xca,
 #define RFM69_IRQ     3
 #define RFM69_IRQN    3  // Pin 3 is IRQ 3!
 #define RFM69_RST     4
-#define LED           13  // onboard blinky
 
 #define RADIO_TIMEOUT 2000
 
@@ -32,12 +31,20 @@ static char K2[] = { 0xca, 0xff, 0xee, 0xba, 0xbe, 0x42, 0x13, 0x37, 0xde, 0xca,
 
 #define CMD_START_WITHOUT_PRESENCE_CHALLENGE "0"
 #define CMD_START_WITH_PRESENCE_CHALLENGE "1"
+#define CMD_CLOSE_DOOR "8"
+#define CMD_SELFTEST "9"
 
 #define NCLEN 16
 #define OCLEN 16
 #define ACLEN 16
 #define TCLEN 16
 #define MACLEN 32
+
+#define RELAY0 9
+#define RELAY1 10
+#define RELAY2 11
+#define RELAY3 12
+
 
 RFM69 radio = RFM69(RFM69_CS, RFM69_IRQ, IS_RFM69HCW, RFM69_IRQN);
 //TransistorNoiseSource noise1(A1);
@@ -50,6 +57,9 @@ bool waitForMessage(char msgid, int len);
 void hmac(char* dest, char* data, int len, char* key);
 void startSession(int usePresenceChallenge);
 void finishSession(char* pc, char* nc, char* oc);
+void selftest();
+void openDoor();
+void closeDoor();
 
 void setup() {
   Serial.begin(SERIAL_BAUD);
@@ -71,7 +81,6 @@ void setup() {
   
   radio.encrypt(ENCRYPTKEY);
   
-  pinMode(LED, OUTPUT);
   Serial.print("001 Transmitting at ");
   Serial.print(FREQUENCY==RF69_433MHZ ? 433 : FREQUENCY==RF69_868MHZ ? 868 : 915);
   Serial.println(" MHz");
@@ -82,7 +91,16 @@ void setup() {
   //RNG.stir(K1, 16);
   //RNG.stir(K2, 16);  
   //RNG.addNoiseSource(noise1);
-  //RNG.addNoiseSource(noise2); 
+  //RNG.addNoiseSource(noise2);
+
+  pinMode(RELAY0, OUTPUT);
+  pinMode(RELAY1, OUTPUT);
+  pinMode(RELAY2, OUTPUT);
+  pinMode(RELAY3, OUTPUT);
+  digitalWrite(RELAY0, HIGH);
+  digitalWrite(RELAY1, HIGH);
+  digitalWrite(RELAY2, HIGH);
+  digitalWrite(RELAY3, HIGH);
 }
 
 void loop() {
@@ -95,13 +113,22 @@ void loop() {
     startSession(1);
   } else if (strcmp(in, CMD_START_WITHOUT_PRESENCE_CHALLENGE) == 0) {
     startSession(0);
+  } else if (strcmp(in, CMD_SELFTEST) == 0) {
+    selftest();
+  } else if (strcmp(in, CMD_CLOSE_DOOR) == 0) {
+    closeDoor();
+    Serial.println("200 OK");
   } else {
     Serial.println("400 Unknown command.");
   }
 }
 
-void sendMessage(char*msg, int len) {
-  radio.sendWithRetry(FRONTEND_NODEID, msg, len);
+bool sendMessage(char* msg, int len) {
+  if (! radio.sendWithRetry(FRONTEND_NODEID, msg, len)) {
+    Serial.println("556 Radio timeout while sending.");
+    return 0;
+  }
+  return 1;
 }
 
 bool waitForMessage(char msgid, int len) {
@@ -134,6 +161,11 @@ bool waitForMessage(char msgid, int len) {
     Serial.println(radio.SENDERID);
     return 0;
   }
+  if (radio.ACKRequested())
+    {
+      radio.sendACK();
+    }
+  return 1;
 }
 
 void hmac(char* dest, char* data, int len, char* key) {
@@ -145,13 +177,13 @@ void hmac(char* dest, char* data, int len, char* key) {
 void startSession(int usePresenceChallenge){
   char radiopacket[RF69_MAX_DATA_LEN] = { 0x23 }; // ping
   Serial.println("010 Pinging door unit.");
-  sendMessage(radiopacket, 1);
+  if (! sendMessage(radiopacket, 1)) return;
   if (! waitForMessage(0x42, 1)) return; // pong
 
   Serial.println("011 Step 1");
   radiopacket[0] = 0x00;
   radiopacket[1] = 0x42; // first message, protocol version 0x42
-  sendMessage(radiopacket, 2);
+  if (! sendMessage(radiopacket, 2)) return;
   
   Serial.println("012 Step 2");
   if (! waitForMessage(0x01, 1+TCLEN)) return;
@@ -174,7 +206,7 @@ void startSession(int usePresenceChallenge){
   memset(radiopacket + 1, usePresenceChallenge, 1);
   memcpy(radiopacket + 2, nc, NCLEN);
   memcpy(radiopacket + 2 + NCLEN, mac, MACLEN);
-  sendMessage(radiopacket, 2+NCLEN+MACLEN);
+  if (! sendMessage(radiopacket, 2+NCLEN+MACLEN)) return;
 
   Serial.println("014 Step 4");
   if (! waitForMessage(0x03, 1+OCLEN)) return;
@@ -207,7 +239,7 @@ void finishSession(char* pc, char* nc, char* oc) {
 
   memcpy(radiopacket+1, ac, ACLEN);
   memcpy(radiopacket+1+ACLEN, mac, MACLEN);
-  sendMessage(radiopacket, 1+ACLEN+MACLEN);
+  if (!sendMessage(radiopacket, 1+ACLEN+MACLEN)) return;
 
   Serial.println("016 Step 6");
   hmac(mac, ac, ACLEN, K2);
@@ -220,9 +252,54 @@ void finishSession(char* pc, char* nc, char* oc) {
     }
   }
   if (isCorrect == 1) {
-    // Fernbedienung ansteuern!
+    openDoor();
     Serial.println("200 OK");
   } else {
     Serial.println("504 Illegal mac received!");
   }
+}
+
+void openDoor() {
+  Serial.println("020 Door open.");
+  digitalWrite(RELAY0, LOW);
+  delay(500);
+  digitalWrite(RELAY0, HIGH);
+  delay(3000);
+}
+
+void closeDoor() {
+  Serial.println("021 Door close.");
+  digitalWrite(RELAY1, LOW);
+  delay(500);
+  digitalWrite(RELAY1, HIGH);
+  delay(3000);
+}
+
+void selftest() {
+  Serial.println("090 Selftest init.");
+  Serial.println("091 Relay 0.");
+  digitalWrite(RELAY0, LOW);
+  delay(500);
+  digitalWrite(RELAY0, HIGH);
+  delay(3000);
+
+  Serial.println("091 Relay 1.");
+  digitalWrite(RELAY1, LOW);
+  delay(500);
+  digitalWrite(RELAY1, HIGH);
+  delay(3000);
+
+  Serial.println("091 Relay 2.");
+  digitalWrite(RELAY2, LOW);
+  delay(500);
+  digitalWrite(RELAY2, HIGH);
+  delay(3000);
+
+  Serial.println("091 Relay 3.");
+  digitalWrite(RELAY3, LOW);
+  delay(500);
+  digitalWrite(RELAY3, HIGH);
+  delay(3000);
+
+  Serial.println("099 Selftest complete.");
 }
