@@ -1,5 +1,7 @@
 #include <RFM69.h>
+#include <SPI.h>
 #include "config.h"
+#include "mdos.h"
 
 #define FREQUENCY     RF69_433MHZ
 #define IS_RFM69HCW    true
@@ -9,6 +11,7 @@
 #define RFM69_IRQN    3  // Pin 3 is IRQ 3!
 #define RFM69_RST     4
 
+RFM69 radio = RFM69(RFM69_CS, RFM69_IRQ, IS_RFM69HCW, RFM69_IRQN);
 
 void rf_setup() {
   // Hard Reset the RFM module
@@ -19,7 +22,7 @@ void rf_setup() {
   delay(100);
 
   // Initialize radio
-  radio.initialize(FREQUENCY,NODEID,NETWORKID);
+  radio.initialize(FREQUENCY,FRONTEND_NODEID,NETWORKID);
   if (IS_RFM69HCW) {
     radio.setHighPower();    // Only for RFM69HCW & HW!
   }
@@ -28,26 +31,34 @@ void rf_setup() {
   radio.encrypt(ENCRYPTKEY);
 }
 
-void rf_recv() {
+void rf_loop() {
+  char reply_msg[50];
+  
   if (radio.receiveDone())
   {
     //print message received to serial
     Serial.print('[');Serial.print(radio.SENDERID);Serial.print("] ");
     Serial.print((char*)radio.DATA);
     Serial.print("   [RX_RSSI:");Serial.print(radio.RSSI);Serial.print("]");
- 
-    //check if received message contains Hello World
-    if (strstr((char *)radio.DATA, "Hello World"))
-    {
-      //check if sender wanted an ACK
-      if (radio.ACKRequested())
-      {
-        radio.sendACK();
-        Serial.println(" - ACK sent");
+
+
+    mdos_recv((char *)radio.DATA, reply_msg);
+    if (reply_msg[0] != 0x00) {
+      if (radio.ACKRequested()) // needs to be put before something is sent!
+	{
+	  radio.sendACK();
+	  Serial.println(" - ACK sent");
+	}
+
+
+      if (radio.sendWithRetry(BACKEND_NODEID, reply_msg, strlen(reply_msg))) { //target node Id, message as string or byte array, message length
+	Serial.println("Sent OK");
       }
-      Blink(LED, 40, 3); //blink LED 3 times, 40ms between blinks
-    }  
+
+    }
   }
- 
+  
+  Serial.flush();
+  
   radio.receiveDone(); //put radio in RX mode
 }

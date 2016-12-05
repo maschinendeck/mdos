@@ -2,8 +2,9 @@
 #include <SHA256.h>
 #include <SimpleTimer.h>
 #include "display.h"
+#include "config.h"
 
-#define LED           13  // onboard blinky
+//#define LED           13  // onboard blinky
 
 #define DEBUG true
 
@@ -89,13 +90,13 @@ void start_protocol_tmr() {
 
 void relay_tmr_handler() {
   switch_relay(false);
-  // do we need to reset the timer? -> check source code
+  // do we need to reset the timer? -> check source code // does not seem to be the case
   disp_off();
 }
 
 void start_relay_tmr() {
   relay_timer_id = timer.setTimeout(RELAY_TIMEOUT, relay_tmr_handler);
-  // enable? -> check source code
+  // enable? -> check source code // does not seem to be necessary
 }
 
 void open_door() {
@@ -230,9 +231,8 @@ void process_pl_4(char *pl, char *msg) {
 }
 
 
-void recv(char *pl) {
+void mdos_recv(char *pl, char *msg) {
 
-  char msg[50];
   msg[0] = 0x00;
   bool final_step = false;
   
@@ -258,17 +258,21 @@ void recv(char *pl) {
     process_pl_4(pl, msg);
     final_step = true;
   }
-  if (msg[0] == 0x00) {
+  if (msg[0] != 0x00) {
     debug_led(true);
 
-    // send msg -> TODO
+    // everything is fine, msg is sent outside of this function
 
     if (final_step) {
       reset();
     }
   } else {
     disp_write_fail();
-    start_relay_tmr();
+    start_relay_tmr(); // door is not open, but relay tmr also resets display
     reset();
   }
+}
+
+void mdos_loop() {
+  timer.run();
 }
