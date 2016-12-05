@@ -50,8 +50,10 @@ D0: 0x23
 
 RESPONSE: 0x42
 
+==== ROOM STATE ====
 
-
+D0: 0x10
+D1: 0x01 if room is open else 0x00
    
 ==== dev keys ====
 
