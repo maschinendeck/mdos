@@ -1,8 +1,9 @@
-#include <Arduino.h>
-#include "Crypto/Crypto.h"
-#include "Crypto/SHA256.h"
-#include "SimpleTimer.h"
+#include <Crypto.h>
+#include <SHA256.h>
+#include <SimpleTimer.h>
 #include "display.h"
+
+#define LED           13  // onboard blinky
 
 #define DEBUG true
 
@@ -39,6 +40,10 @@ int protocol_timer_id;
 void mdos_setup() {
   pinMode(PIN_DEBUG_LED, OUTPUT);
   hash = SHA256();
+
+  Serial.begin(SERIAL_BAUD);
+  
+  //pinMode(LED, OUTPUT);
 }
 
 
