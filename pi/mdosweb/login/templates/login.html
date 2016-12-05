@@ -29,6 +29,8 @@
   –––––––––––––––––––––––––––––––––––––––––––––––––– -->
   <link rel="icon" type="image/png" href="{% static "images/favicon.png" %}">
 
+  <script src="{% static "admin/js/jquery.js" %}"></script>
+
 </head>
 <body>
 
@@ -61,12 +63,47 @@
 	  {% csrf_token %}
 	  {{ form.pin.errors }}
 	  {{ form.pin }}
+	  <div id="pinpad">
+	    <div class="pinpadrow">
+	      <div class="pinbutton"><div class="pinnumber">1</div></div>
+	      <div class="pinbutton"><div class="pinnumber">2</div></div>
+	      <div class="pinbutton"><div class="pinnumber">3</div></div>
+	    </div>
+	    <div class="pinpadrow">
+	      <div class="pinbutton"><div class="pinnumber">4</div></div>
+	      <div class="pinbutton"><div class="pinnumber">5</div></div>
+	      <div class="pinbutton"><div class="pinnumber">6</div></div>
+	    </div>
+	    <div class="pinpadrow">
+	      <div class="pinbutton"><div class="pinnumber">7</div></div>
+	      <div class="pinbutton"><div class="pinnumber">8</div></div>
+	      <div class="pinbutton"><div class="pinnumber">9</div></div>
+	    </div>
+	    <div class="pinpadrow">
+	      <div class="pinbutton pinbutton-cancel"><div class="pinnumber">C</div></div>
+	      <div class="pinbutton"><div class="pinnumber">0</div></div>
+	      <div class="pinbutton pinbutton-ok"><div class="pinnumber">OK</div></div>
+	    </div>
+	  </div>
 	  {{ form.session }}
 	  <div>
 	    <a href="" class="button">cancel</a>
 	    <input class="button button-primary" type="submit" value="Tür öffnen" />
 	  </div>
-	  
+	  <script>
+	   $(document).ready(function() {
+	       $('.pinnumber').click(function(e) {
+		   var num = e.target.innerHTML;
+		   if (num == "OK") {
+		       document.forms[0].submit();
+		   } else if (num == "C") {
+		       alert('reset');
+		   } else {
+		       alert(num);
+		   }
+		   });
+	       });
+	  </script>
 	  {% endif %}
 	</form>
 	
@@ -75,6 +112,6 @@
   </div>
 
 <!-- End Document
-  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+     –––––––––––––––––––––––––––––––––––––––––––––––––– -->
 </body>
 </html>
