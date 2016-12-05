@@ -1,5 +1,6 @@
 #include <RFM69.h>
 #include <SPI.h>
+#include "rf.h"
 #include "config.h"
 #include "mdos.h"
 
@@ -32,33 +33,49 @@ void rf_setup() {
 }
 
 void rf_loop() {
-  char reply_msg[50];
+  uint8_t in_msg[MAX_IN_MSG_LEN];
+  uint8_t in_msg_len;
+  uint8_t reply_msg[MAX_REPLY_MSG_LEN];
+  uint8_t reply_msg_len;
   
   if (radio.receiveDone())
   {
     //print message received to serial
-    Serial.print('[');Serial.print(radio.SENDERID);Serial.print("] ");
-    Serial.print((char*)radio.DATA);
-    Serial.print("   [RX_RSSI:");Serial.print(radio.RSSI);Serial.print("]");
+    //Serial.print('[');Serial.print(radio.SENDERID);Serial.print("] ");
+    //Serial.print((char*)radio.DATA);
+    //Serial.print("   [RX_RSSI:");Serial.print(radio.RSSI);Serial.print("]");
 
-
-    mdos_recv((char *)radio.DATA, reply_msg);
-    if (reply_msg[0] != 0x00) {
+    if (radio.SENDERID != BACKEND_NODEID) {
+      Serial.print("503 Error! Expected message from ");
+      Serial.print(BACKEND_NODEID);
+      Serial.print(" but received message from ");
+      Serial.println(radio.SENDERID);
+      Serial.flush();
+    } else {
+      in_msg_len = radio.DATALEN;
+      for (int i = 0; i < in_msg_len; i++) {
+	in_msg[i] = radio.DATA[i];
+      }
+      
       if (radio.ACKRequested()) // needs to be put before something is sent!
 	{
 	  radio.sendACK();
 	  Serial.println(" - ACK sent");
+	  Serial.flush();
 	}
+      
+      mdos_recv(in_msg, in_msg_len, reply_msg, &reply_msg_len);
+      if (reply_msg[0] != 0x00) {
 
-
-      if (radio.sendWithRetry(BACKEND_NODEID, reply_msg, strlen(reply_msg))) { //target node Id, message as string or byte array, message length
-	Serial.println("Sent OK");
+	if (radio.sendWithRetry(BACKEND_NODEID, reply_msg, reply_msg_len)) { //target node Id, message as string or byte array, message length
+	  Serial.println("Sent OK");
+	  Serial.flush();
+	}
       }
-
     }
   }
   
   Serial.flush();
   
-  radio.receiveDone(); //put radio in RX mode
+  //radio.receiveDone(); //put radio in RX mode
 }
