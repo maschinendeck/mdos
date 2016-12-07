@@ -29,21 +29,28 @@ static char K2[] = { 0xca, 0xff, 0xee, 0xba, 0xbe, 0x42, 0x13, 0x37, 0xde, 0xca,
 #define BACKEND_NODEID 42
 #define NETWORKID 74
 
-#define CMD_START_WITHOUT_PRESENCE_CHALLENGE "0"
-#define CMD_START_WITH_PRESENCE_CHALLENGE "1"
-#define CMD_CLOSE_DOOR "8"
-#define CMD_SELFTEST "9"
+#define CMD_START_WITHOUT_PRESENCE_CHALLENGE "start_no_pc"
+#define CMD_START_WITH_PRESENCE_CHALLENGE "start"
+#define CMD_CLOSE_DOOR "close"
+#define CMD_SELFTEST "selftest"
+
+#define PRESENCE_CHALLENGE_TIMEOUT 15000
+
+#define RADIO_FAIL_MSG_ID 0xFF
 
 #define NCLEN 16
 #define OCLEN 16
 #define ACLEN 16
 #define TCLEN 16
 #define MACLEN 32
+#define PCLEN 4
 
-#define RELAY0 9
+#define RELAY0 6
 #define RELAY1 10
 #define RELAY2 11
 #define RELAY3 12
+
+//#define DEBUG 1
 
 
 RFM69 radio = RFM69(RFM69_CS, RFM69_IRQ, IS_RFM69HCW, RFM69_IRQN);
@@ -63,7 +70,10 @@ void closeDoor();
 
 void setup() {
   Serial.begin(SERIAL_BAUD);
+
+  #ifdef DEBUG
   Serial.println("000 MDOS BACKEND STARTED");
+  #endif
 
   // Hard Reset the RFM module
   pinMode(RFM69_RST, OUTPUT);
@@ -80,10 +90,12 @@ void setup() {
   radio.setPowerLevel(31); // power output ranges from 0 (5dBm) to 31 (20dBm)
   
   radio.encrypt(ENCRYPTKEY);
-  
+
+  #ifdef DEBUG
   Serial.print("001 Transmitting at ");
   Serial.print(FREQUENCY==RF69_433MHZ ? 433 : FREQUENCY==RF69_868MHZ ? 868 : 915);
   Serial.println(" MHz");
+  #endif
 
 
   RNG.begin("mdos frontend", 0);
@@ -103,12 +115,18 @@ void setup() {
   digitalWrite(RELAY3, HIGH);
 }
 
+char in[20];
+int bytesRead;
+
 void loop() {
-  char in[3];
-  if (Serial.readBytes(in, 1) < 1) {
-    return;
+  in[0] = 0x0;
+  Serial.flush();
+  while (!Serial.available());
+  bytesRead = Serial.readBytesUntil('\n', in, 19);
+  if (bytesRead > 0) {
+    in[bytesRead] = 0x0; // cut off \n
   }
-  in[1] = 0x0;
+    
   if (strcmp(in, CMD_START_WITH_PRESENCE_CHALLENGE) == 0) {
     startSession(1);
   } else if (strcmp(in, CMD_START_WITHOUT_PRESENCE_CHALLENGE) == 0) {
@@ -119,20 +137,23 @@ void loop() {
     closeDoor();
     Serial.println("200 OK");
   } else {
-    Serial.println("400 Unknown command.");
+    Serial.print("400 Unknown command: ");
+    Serial.println(in);
   }
 }
 
 bool sendMessage(char* msg, int len) {
   if (! radio.sendWithRetry(FRONTEND_NODEID, msg, len)) {
-    Serial.println("556 Radio timeout while sending.");
+    Serial.println("556 Radio failure while sending.");
     return 0;
   }
   return 1;
 }
 
 bool waitForMessage(char msgid, int len) {
+  #ifdef DEBUG
   Serial.println("002 Waiting for response...");
+  #endif
   int timeout = millis() + RADIO_TIMEOUT;
   while (! radio.receiveDone()) {
     if (millis() > timeout) {
@@ -141,6 +162,10 @@ bool waitForMessage(char msgid, int len) {
     }
   };
   if (radio.DATA[0] != msgid) {
+    if (radio.DATA[0] == RADIO_FAIL_MSG_ID) {
+      Serial.println("505 Frontend says no.");
+      return 0;
+    }
     Serial.print("501 Error! Expected message id ");
     Serial.print(msgid);
     Serial.print(" but received message with id ");
@@ -174,41 +199,86 @@ void hmac(char* dest, char* data, int len, char* key) {
   hash.finalizeHMAC(key, sizeof(key), dest, 32);
 }
 
+void printDebug(char* buf, int len) {
+  int i;
+  for (i=0; i<len; i++) {
+    Serial.print(buf[i], HEX);
+    Serial.print(':');
+  }
+  Serial.println();
+}
+
 void startSession(int usePresenceChallenge){
   char radiopacket[RF69_MAX_DATA_LEN] = { 0x23 }; // ping
+  #ifdef DEBUG
   Serial.println("010 Pinging door unit.");
+  #endif
   if (! sendMessage(radiopacket, 1)) return;
   if (! waitForMessage(0x42, 1)) return; // pong
 
+  #ifdef DEBUG
   Serial.println("011 Step 1");
+  #endif
   radiopacket[0] = 0x00;
   radiopacket[1] = 0x42; // first message, protocol version 0x42
   if (! sendMessage(radiopacket, 2)) return;
   
+  #ifdef DEBUG
   Serial.println("012 Step 2");
+  #endif
   if (! waitForMessage(0x01, 1+TCLEN)) return;
   char tc[TCLEN];
   int i;
   for (i=0; i<TCLEN; i++) {
     tc[i] = radio.DATA[i+1];
   }
+  
+  #ifdef DEBUG
+  Serial.print("012 tc:");
+  printDebug(tc, TCLEN);
 
   Serial.println("013 Step 3");
+  #endif
   char nc[NCLEN];
   RNG.rand((uint8_t*)nc, NCLEN);
-  char data[TCLEN + 1 + NCLEN];
-  memcpy(data, tc, TCLEN);
-  memset(data + TCLEN, usePresenceChallenge, 1);
-  memcpy(data + TCLEN + 1, nc, NCLEN);
+
+  #ifdef DEBUG
+  Serial.print("013 nc:");
+  printDebug(nc, NCLEN);
+  #endif
+  
   char mac[MACLEN];
-  hmac(mac, data, sizeof(data), K0);
+  hash.resetHMAC(K0, sizeof(K0));
+  hash.update(tc, TCLEN);
+  hash.update(&usePresenceChallenge, 1);
+  hash.update(nc, NCLEN);
+  hash.finalizeHMAC(K0, sizeof(K0), mac, 32);
+
+  #ifdef DEBUG
+  Serial.print("013 mac:");
+  printDebug(mac, MACLEN);
+  #endif
+
+  
+  //char data[TCLEN + 1 + NCLEN];
+  //memcpy(data, tc, TCLEN);
+  //memset(data + TCLEN, usePresenceChallenge, 1);
+  //memcpy(data + TCLEN + 1, nc, NCLEN);
+  //hmac(mac, data, sizeof(data), K0);
   memset(radiopacket, 0x02, 1);
   memset(radiopacket + 1, usePresenceChallenge, 1);
   memcpy(radiopacket + 2, nc, NCLEN);
   memcpy(radiopacket + 2 + NCLEN, mac, MACLEN);
+
+  #ifdef DEBUG
+  Serial.print("013 radiopacket:");
+  printDebug(radiopacket, 2+NCLEN+MACLEN);
+  #endif
   if (! sendMessage(radiopacket, 2+NCLEN+MACLEN)) return;
 
+  #ifdef DEBUG
   Serial.println("014 Step 4");
+  #endif
   if (! waitForMessage(0x03, 1+OCLEN)) return;
   char oc[16];
   for (i=0; i<OCLEN; i++) {
@@ -216,33 +286,57 @@ void startSession(int usePresenceChallenge){
   }
 
 
-  char pc[2] = {0xFF, 0xFF};
+  char pc[PCLEN] = {0xFF, 0xFF, 0xFF, 0xFF};
   if (usePresenceChallenge) {
+    int timeout = millis() + PRESENCE_CHALLENGE_TIMEOUT;
     Serial.println("100 Waiting for Presence Challenge.");
-    while (Serial.readBytes(pc, 2) < 2);
+    Serial.flush();
+    int i;
+    for (i=0; i<PCLEN; i++) {
+      int in = -1;
+      while (in < 0) {
+	in = Serial.read();
+	if (millis() > timeout) {
+	  Serial.println("401 Presence Challenge Timeout");
+	  return;
+	}
+      }
+      pc[i] = in-'0';
+    }
   }
   finishSession(pc, nc, oc);
 }
 
 void finishSession(char* pc, char* nc, char* oc) {
+  #ifdef DEBUG
   Serial.println("015 Step 5");
-  char ac[16];
+  #endif
+  char ac[ACLEN];
   RNG.rand((uint8_t*)ac, 16);
-  char data[NCLEN+2+OCLEN+ACLEN];
-  memcpy(data, nc, NCLEN);
-  memcpy(data+NCLEN, pc, 2);
-  memcpy(data+NCLEN+2, oc, OCLEN);
-  memcpy(data+NCLEN+2+OCLEN, ac, ACLEN);
+  #ifdef DEBUG
+  Serial.print("013 ac:");
+  printDebug(ac, ACLEN);
+  #endif
+
   char mac[MACLEN];
-  hmac(mac, data, sizeof(data), K1);
+  hash.resetHMAC(K1, sizeof(K1));
+  hash.update(nc, NCLEN);
+  hash.update(pc, PCLEN);
+  hash.update(oc, OCLEN);
+  hash.update(ac, ACLEN);
+  hash.finalizeHMAC(K1, sizeof(K1), mac, 32);
   char radiopacket[RF69_MAX_DATA_LEN] = { 0x04 };
 
   memcpy(radiopacket+1, ac, ACLEN);
   memcpy(radiopacket+1+ACLEN, mac, MACLEN);
   if (!sendMessage(radiopacket, 1+ACLEN+MACLEN)) return;
 
+  #ifdef DEBUG
   Serial.println("016 Step 6");
-  hmac(mac, ac, ACLEN, K2);
+  #endif
+  hash.resetHMAC(K2, sizeof(K2));
+  hash.update(ac, ACLEN);
+  hash.finalizeHMAC(K2, sizeof(K2), mac, 32);
   if (! waitForMessage(0x05, 33)) return;
   int i;
   short isCorrect=1;
@@ -260,19 +354,21 @@ void finishSession(char* pc, char* nc, char* oc) {
 }
 
 void openDoor() {
+  #ifdef DEBUG
   Serial.println("020 Door open.");
+  #endif
   digitalWrite(RELAY0, LOW);
   delay(500);
   digitalWrite(RELAY0, HIGH);
-  delay(3000);
 }
 
 void closeDoor() {
+  #ifdef DEBUG
   Serial.println("021 Door close.");
+  #endif
   digitalWrite(RELAY1, LOW);
   delay(500);
   digitalWrite(RELAY1, HIGH);
-  delay(3000);
 }
 
 void selftest() {
