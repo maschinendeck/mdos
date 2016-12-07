@@ -56,13 +56,16 @@
 	  <img src="{% static "images/maschinendeck.png" %}" alt="Maschinendeck-Logo" class="logo">
 	  {% csrf_token %}
 	  {{ form.session }}
-	  <input class="button button-primary" type="submit" value="Tür öffnen" />
+	  <button class="button-primary" type="submit" name="action" value="open">Tür öffnen</button>
+	  <button class="button-secondary" type="submit" name="action" value="close">Tür schließen</button>
 
 	  {% else %}
-
+	  <img id="counter" src="{% static "images/maschinendeck.png" %}" alt="Maschinendeck-Logo">
 	  {% csrf_token %}
 	  {{ form.pin.errors }}
-	  {{ form.pin }}
+	  	  <input id="pin" name="{{ form.pin.html_name }}" value="" autofocus="true" maxlength="4" />
+		  
+
 	  <div id="pinpad">
 	    <div class="pinpadrow">
 	      <div class="pinbutton"><div class="pinnumber">1</div></div>
@@ -97,12 +100,29 @@
 		   if (num == "OK") {
 		       document.forms[0].submit();
 		   } else if (num == "C") {
-		       alert('reset');
-		   } else {
-		       alert(num);
+		       $('#pin').val('');
+	           } else {
+	               $('#pin').val($('#pin').val() + num);
+	               if ($('#pin').val().length == 4) {
+	                 document.forms[0].submit();
+	               }
 		   }
 		   });
-	       });
+	   });
+	   $('#pin').keyup(function() {
+	       if ($('#pin').val().length == 4) {
+	                 document.forms[0].submit();
+	   }
+	   });
+
+	   var counter = 15;
+	   var interval = setInterval(function() {
+	   counter--;
+	   $('#counter').html("" + counter + "s");
+	   if (counter == 0) {
+             document.forms[0].submit();
+	   }
+	   }, 1000);
 	  </script>
 	  {% endif %}
 	</form>

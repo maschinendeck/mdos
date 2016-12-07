@@ -9,9 +9,6 @@
     margin: 20px auto;
 }
 
-.main button {
-    padding-top: 20px;
-}
 
 .messages li {
     list-style-type: none;
@@ -73,3 +70,18 @@ input[name="pin"] {
 .pinpadrow {
     text-align: center;
 }
+
+#pin {
+    text-align: center;
+    width: 6em;
+    
+} 
+
+#counter {
+    animation:spin 15s ease-in-out;
+    width: 50px;
+    display: block;
+    margin: 20px auto;
+}
+
+@keyframes spin { 100% { transform:rotate(180deg); } }
