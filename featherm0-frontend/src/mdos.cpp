@@ -338,6 +338,22 @@ void mdos_recv(uint8_t *in_msg, int in_msg_len, uint8_t *reply_msg, uint8_t *rep
     
     reply_msg[0] = 0x42;
     *reply_msg_len = 1;
+  } else if (in_msg_len == 2 && in_msg[0] == 0x10) {
+    // room status led
+    reply_msg[0] = 0xfe;
+    if (in_msg[1] == 0x01) {
+      if(DEBUG) {
+	Serial.println("ROOM STATE open");
+	Serial.flush();
+      }
+      digitalWrite(PIN_RAUMSTATUS_LED, HIGH);
+    } else {
+      digitalWrite(PIN_RAUMSTATUS_LED, LOW);
+      if(DEBUG) {
+	Serial.println("ROOM STATE closed");
+	Serial.flush();
+      }
+    }
   } else if (state == 0 && in_msg_len == 2 && in_msg[0] == 0x00 && in_msg[1] == 0x42) {
     start_protocol_tmr();
     process_pl_0(in_msg, reply_msg, reply_msg_len);
@@ -347,6 +363,7 @@ void mdos_recv(uint8_t *in_msg, int in_msg_len, uint8_t *reply_msg, uint8_t *rep
     process_pl_4(in_msg, reply_msg, reply_msg_len);
     final_step = true;
   }
+  
   if (reply_msg[0] != 0xff) {
     //debug_led1(true);
     //debug_led2(true);
@@ -375,6 +392,7 @@ void mdos_setup() {
   pinMode(PIN_RAUMSTATUS_LED, OUTPUT);
   pinMode(PIN_RELAY, OUTPUT);
 
+
   switch_relay(false);
   
   hash = SHA256();
@@ -387,6 +405,9 @@ void mdos_setup() {
   RNG.addNoiseSource(noise);
 
   disp_write_boot();
+  digitalWrite(PIN_RAUMSTATUS_LED, HIGH);
+  delay(1000);
+  digitalWrite(PIN_RAUMSTATUS_LED, LOW);
   start_relay_tmr();
 }
 

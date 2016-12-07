@@ -67,7 +67,7 @@ void rf_loop() {
 	}
       
       mdos_recv(in_msg, in_msg_len, reply_msg, &reply_msg_len);
-      if (reply_msg[0] != 0xff) {
+      if (reply_msg[0] != 0xff && reply_msg[0] != 0xfe) {
 
 	if (radio.sendWithRetry(BACKEND_NODEID, reply_msg, reply_msg_len)) { //target node Id, message as string or byte array, message length
 	  if(DEBUG) {
@@ -75,7 +75,7 @@ void rf_loop() {
 	    Serial.flush();
 	  }
 	}
-      } else {
+      } else if (reply_msg[0] == 0xff) { // if reply_msg[0] is 0xfe do not send anything (except ack above)
 	if(DEBUG) {
 	  Serial.println("send fail");
 	  Serial.flush();
