@@ -1,6 +1,11 @@
+#define DEBUG true
+
 #define SERIAL_BAUD 115200
 
 #define DISP_ADDR 0x70
+
+#define RELAY_TIMEOUT 3000
+#define PROTOCOL_TIMEOUT 16000
 
 #define NETWORKID 74
 #define FRONTEND_NODEID 23

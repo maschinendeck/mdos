@@ -17,7 +17,7 @@ void disp_write_num_reverse(int n) {
 }
 
 void disp_off() {
-  for (int i = 4; i < 4; i++) 
+  for (int i = 0; i < 4; i++) 
     alpha4.writeDigitRaw(i, 0x0000);
   alpha4.writeDisplay();
 }
@@ -38,7 +38,15 @@ void disp_write_fail() {
   alpha4.writeDisplay();
 }
 
+void disp_write_boot() {
+  alpha4.writeDigitAscii(0, 'B');
+  alpha4.writeDigitAscii(1, 'O');
+  alpha4.writeDigitAscii(2, 'O');
+  alpha4.writeDigitAscii(3, 'T');
+  alpha4.writeDisplay();
+}
 
 void disp_setup() {
-  alpha4.begin(0x70);
+  alpha4.begin(DISP_ADDR);
+  disp_off();
 }  

@@ -60,16 +60,31 @@ void rf_loop() {
       if (radio.ACKRequested()) // needs to be put before something is sent!
 	{
 	  radio.sendACK();
-	  Serial.println(" - ACK sent");
-	  Serial.flush();
+	  if (DEBUG) {
+	    Serial.println(" - ACK sent");
+	    Serial.flush();
+	  }
 	}
       
       mdos_recv(in_msg, in_msg_len, reply_msg, &reply_msg_len);
-      if (reply_msg[0] != 0x00) {
+      if (reply_msg[0] != 0xff) {
 
 	if (radio.sendWithRetry(BACKEND_NODEID, reply_msg, reply_msg_len)) { //target node Id, message as string or byte array, message length
-	  Serial.println("Sent OK");
+	  if(DEBUG) {
+	    Serial.println("Sent OK");
+	    Serial.flush();
+	  }
+	}
+      } else {
+	if(DEBUG) {
+	  Serial.println("send fail");
 	  Serial.flush();
+	}
+	if (radio.sendWithRetry(BACKEND_NODEID, reply_msg, 1)) { //target node Id, message as string or byte array, message length
+	  if(DEBUG) {
+	    Serial.println("Sent OK");
+	    Serial.flush();
+	  }
 	}
       }
     }

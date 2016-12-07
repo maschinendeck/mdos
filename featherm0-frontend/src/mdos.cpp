@@ -8,16 +8,10 @@
 
 //#define LED           13  // onboard blinky
 
-#define DEBUG true
-
-#define CNT_RAND_INSECURE_SEED 0x0000
-#define RELAY_TIMEOUT 3000
-#define PROTOCOL_TIMEOUT 60000
-
-#define PROTOCOL_TIMER 1
-#define RELAY_TIMER 0
-#define PIN_DEBUG_LED 1
-#define PIN_RELAY 2
+#define PIN_DEBUG_LED1 6
+#define PIN_DEBUG_LED2 10
+#define PIN_RAUMSTATUS_LED 11
+#define PIN_RELAY 12
 
 #define LEN_NONCE 16
 #define LEN_HASH 32
@@ -35,40 +29,44 @@ uint8_t pc[LEN_PC];
 int relay_timer_id;
 int protocol_timer_id;
 
+bool relay_timer_running = false;
+
 TransistorNoiseSource noise(A1);
 
-void mdos_setup() {
-  pinMode(PIN_DEBUG_LED, OUTPUT);
-  hash = SHA256();
 
-  Serial.begin(SERIAL_BAUD);
-  
-  //pinMode(LED, OUTPUT);
-
-  RNG.begin("MDOS", 0);
-  RNG.addNoiseSource(noise);
+void debug_led1(bool state) {
+  if (state) {
+    digitalWrite(PIN_DEBUG_LED1, HIGH);
+  } else {
+    digitalWrite(PIN_DEBUG_LED1, LOW);
+  }
 }
 
-
-void debug_led(bool state) {
+void debug_led2(bool state) {
   if (state) {
-    digitalWrite(PIN_DEBUG_LED, HIGH);
+    digitalWrite(PIN_DEBUG_LED2, HIGH);
   } else {
-    digitalWrite(PIN_DEBUG_LED, LOW);
+    digitalWrite(PIN_DEBUG_LED2, LOW);
   }
 }
 
 void switch_relay(bool state) {
   if (state) {
+    if(DEBUG) {
+      Serial.println("relay on");
+    }
     digitalWrite(PIN_RELAY, HIGH);
   } else {
+    if(DEBUG) {
+      Serial.println("relay off");
+    }
     digitalWrite(PIN_RELAY, LOW);
   }
 }
 
 void reset() {
 if (timer.isEnabled(protocol_timer_id)) {
-  timer.disable(protocol_timer_id);
+  timer.deleteTimer(protocol_timer_id);
 }
 
  state = 0;
@@ -77,10 +75,18 @@ if (timer.isEnabled(protocol_timer_id)) {
  oc[0] = 0;
  pc[0] = 0;
 
- debug_led(false);
+ switch_relay(false);
+
+ debug_led1(false);
+ debug_led2(false);
 }
 
 void protocol_tmr_handler() {
+  if(DEBUG) {
+    Serial.print("protocol_tmr_handler");
+    Serial.println();
+    Serial.flush();
+  }
   reset();
   disp_off();
 }
@@ -88,34 +94,55 @@ void protocol_tmr_handler() {
 void start_protocol_tmr() {
   protocol_timer_id = timer.setTimeout(PROTOCOL_TIMEOUT, protocol_tmr_handler);
   // enable? -> check source code
+  if(DEBUG) {
+    Serial.print("start_protocol_tmr ");
+    Serial.print(protocol_timer_id);
+    Serial.println();
+    Serial.flush();
+  }
+}
+
+void reset_relay_tmr() {
+  if(relay_timer_running) {
+    timer.deleteTimer(relay_timer_id);
+  }
 }
 
 void relay_tmr_handler() {
+  relay_timer_running = false;
+  if(DEBUG) {
+    Serial.print("relay_tmr_handler");
+    Serial.println();
+    Serial.flush();
+  }
   switch_relay(false);
-  // do we need to reset the timer? -> check source code // does not seem to be the case
-  disp_off();
+  debug_led1(false);
+  debug_led2(false);
+  protocol_tmr_handler();
 }
 
 void start_relay_tmr() {
+  relay_timer_running = true;
   relay_timer_id = timer.setTimeout(RELAY_TIMEOUT, relay_tmr_handler);
-  // enable? -> check source code // does not seem to be necessary
+  if(DEBUG) {
+    Serial.print("start_relay_tmr ");
+    Serial.print(relay_timer_id);
+    Serial.println();
+    Serial.flush();
+  }
 }
 
 void open_door() {
-  // set pin 1 high (in lua code). what is the equivalent here -> check
+  debug_led1(true);
+  debug_led2(false);
+  switch_relay(true);
   disp_write_open();
   start_relay_tmr();
 }
 
 
-void rand_secure(uint8_t* dest) {
-  // TODO: use crypto lib RNG perhap?s
+void generate_nonce(uint8_t* dest) {
   RNG.rand((uint8_t *) dest, LEN_NONCE);
-}
-
-void rand_insecure(uint8_t* dest) {
-  // TODO: use crypto lib RNG perhaps?
-  rand_secure(dest);
 }
 
 void serial_print_array(uint8_t* a, uint8_t len) {
@@ -128,12 +155,19 @@ void serial_print_array(uint8_t* a, uint8_t len) {
 
 
 void process_pl_0(uint8_t *pl, uint8_t *msg, uint8_t *reply_msg_len) {
+  debug_led1(true);
+  debug_led2(true);
+  
   if(DEBUG) {
     Serial.print("0: ");
   }
+  if (relay_timer_running) {
+    timer.deleteTimer(relay_timer_id);
+  }
+  
   *reply_msg_len = 0;
 
-  rand_insecure(tc);
+  generate_nonce(tc);
 
   if(DEBUG) {
     Serial.print("tc=");
@@ -178,9 +212,9 @@ void process_pl_2(uint8_t *pl, uint8_t *msg, uint8_t *reply_msg_len) {
   }
 
   if (!memcmp(h_own, h_rec, LEN_HASH)) {
-    relay_tmr_handler(); // reset timer
+    reset_relay_tmr(); // reset timer
 
-    rand_secure(oc);
+    generate_nonce(oc);
 
     if(DEBUG) {
       Serial.print("oc=");
@@ -192,7 +226,7 @@ void process_pl_2(uint8_t *pl, uint8_t *msg, uint8_t *reply_msg_len) {
     if (mode == 0x01) {
       // generate presence challenge
       uint8_t pc_src[LEN_NONCE];
-      rand_secure(pc_src);
+      generate_nonce(pc_src);
       long pc_num = (pc_src[0]*256 + pc_src[1]) % 10000;
       if (DEBUG) {
 	Serial.print("pc=");
@@ -208,7 +242,7 @@ void process_pl_2(uint8_t *pl, uint8_t *msg, uint8_t *reply_msg_len) {
       // CURRENTLY DISABLED
       // no presence challenge
       memset(pc, 0xff, LEN_PC);
-      msg[0] = 0x00; // invalidate msg
+      msg[0] = 0xff; // invalidate msg
     }
 
     memcpy(msg+1, oc, LEN_NONCE);
@@ -218,7 +252,7 @@ void process_pl_2(uint8_t *pl, uint8_t *msg, uint8_t *reply_msg_len) {
     
     state++;
   } else {
-    msg[0] = 0x0;
+    msg[0] = 0xff;
   }
 }
 
@@ -241,12 +275,29 @@ void process_pl_4(uint8_t *pl, uint8_t *msg, uint8_t *reply_msg_len) {
   hash.update(ac, LEN_NONCE);
   hash.finalizeHMAC(K1, sizeof(K1), h_own, LEN_HASH);
 
+  if(DEBUG) {
+    Serial.print("ac=");
+    serial_print_array(ac, LEN_NONCE);
+    Serial.print("my hmac=");
+    serial_print_array(h_own, LEN_HASH);
+    Serial.print("received hmac=");
+    serial_print_array(h_rec, LEN_HASH);
+    Serial.flush();
+  }
+
+  
   if (!memcmp(h_own, h_rec, LEN_HASH)) {
     if(DEBUG) {
       Serial.print("OK");
+      Serial.println();
+      Serial.flush();
     }
 
     open_door();
+    if(DEBUG){
+      Serial.println("door has just been opened");
+      Serial.flush();
+    }
 
     msg[0] = 0x05;
 
@@ -261,7 +312,7 @@ void process_pl_4(uint8_t *pl, uint8_t *msg, uint8_t *reply_msg_len) {
     *reply_msg_len = 1 + LEN_HASH;
     
   } else {
-    msg[0] = 0x0;
+    msg[0] = 0xff;
   }
 }
 
@@ -276,7 +327,7 @@ void mdos_recv(uint8_t *in_msg, int in_msg_len, uint8_t *reply_msg, uint8_t *rep
     Serial.flush();
   }
 
-  reply_msg[0] = 0x00;
+  reply_msg[0] = 0xff;
   *reply_msg_len = 0;
   bool final_step = false;
   
@@ -296,21 +347,46 @@ void mdos_recv(uint8_t *in_msg, int in_msg_len, uint8_t *reply_msg, uint8_t *rep
     process_pl_4(in_msg, reply_msg, reply_msg_len);
     final_step = true;
   }
-  if (reply_msg[0] != 0x00) {
-    debug_led(true);
+  if (reply_msg[0] != 0xff) {
+    //debug_led1(true);
+    //debug_led2(true);
 
     // everything is fine, reply_msg is sent outside of this function
 
-    if (final_step) {
-      reset();
-    }
+    //if (final_step) {
+    //  reset();
+    //}
   } else {
     disp_write_fail();
+    debug_led1(false);
+    debug_led2(true);
     start_relay_tmr(); // door is not open, but relay tmr also resets display
-    reset();
+    //reset();
   }
 }
 
 void mdos_loop() {
   timer.run();
 }
+
+void mdos_setup() {
+  pinMode(PIN_DEBUG_LED1, OUTPUT);
+  pinMode(PIN_DEBUG_LED2, OUTPUT);
+  pinMode(PIN_RAUMSTATUS_LED, OUTPUT);
+  pinMode(PIN_RELAY, OUTPUT);
+
+  switch_relay(false);
+  
+  hash = SHA256();
+
+  Serial.begin(SERIAL_BAUD);
+  
+  //pinMode(LED, OUTPUT);
+
+  RNG.begin("MDOS", 0);
+  RNG.addNoiseSource(noise);
+
+  disp_write_boot();
+  start_relay_tmr();
+}
+
