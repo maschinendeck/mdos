@@ -155,18 +155,27 @@ void process_pl_2(uint8_t *pl, uint8_t *msg, uint8_t *reply_msg_len) {
   }
   *reply_msg_len = 0;
 
-  byte mode = pl[1];
+  uint8_t mode = pl[1];
   memcpy(nc, pl+2, LEN_NONCE);
   uint8_t h_rec[LEN_HASH];
-  memcpy(h_rec, pl+17, LEN_HASH);
+  memcpy(h_rec, pl+18, LEN_HASH);
   uint8_t h_own[LEN_HASH];
   hash.resetHMAC(K0, sizeof(K0));
   hash.update(tc, LEN_NONCE);
-  hash.update(pl+1, sizeof(mode));
+  hash.update(&mode, sizeof(mode));
   hash.update(nc, LEN_NONCE);
   hash.finalizeHMAC(K0, sizeof(K0), h_own, LEN_HASH);
 
   // add some debug output here
+  if(DEBUG) {
+    Serial.print("nc=");
+    serial_print_array(nc, LEN_NONCE);
+    Serial.print("my hmac=");
+    serial_print_array(h_own, LEN_HASH);
+    Serial.print("received hmac=");
+    serial_print_array(h_rec, LEN_HASH);
+    Serial.flush();
+  }
 
   if (!memcmp(h_own, h_rec, LEN_HASH)) {
     relay_tmr_handler(); // reset timer
@@ -185,6 +194,11 @@ void process_pl_2(uint8_t *pl, uint8_t *msg, uint8_t *reply_msg_len) {
       uint8_t pc_src[LEN_NONCE];
       rand_secure(pc_src);
       long pc_num = (pc_src[0]*256 + pc_src[1]) % 10000;
+      if (DEBUG) {
+	Serial.print("pc=");
+	Serial.print(pc_num);
+	Serial.println();
+      }
       disp_write_num_reverse(pc_num);
       for (int i = 0; i<4; i++) {
 	pc[i] = pc_num % 10;
@@ -254,10 +268,6 @@ void process_pl_4(uint8_t *pl, uint8_t *msg, uint8_t *reply_msg_len) {
 
 void mdos_recv(uint8_t *in_msg, int in_msg_len, uint8_t *reply_msg, uint8_t *reply_msg_len) {
 
-  reply_msg[0] = 0x00;
-  *reply_msg_len = 0;
-  bool final_step = false;
-  
   if(DEBUG) {
     Serial.print("state: ");
     Serial.print(state);
@@ -266,6 +276,10 @@ void mdos_recv(uint8_t *in_msg, int in_msg_len, uint8_t *reply_msg, uint8_t *rep
     Serial.flush();
   }
 
+  reply_msg[0] = 0x00;
+  *reply_msg_len = 0;
+  bool final_step = false;
+  
   if(in_msg_len == 1 && in_msg[0] == 0x23) {
     if(DEBUG) {
       Serial.println("PING/PONG");

@@ -33,9 +33,9 @@ void rf_setup() {
 }
 
 void rf_loop() {
-  uint8_t in_msg[MAX_IN_MSG_LEN];
+  uint8_t in_msg[RF69_MAX_DATA_LEN];
   uint8_t in_msg_len;
-  uint8_t reply_msg[MAX_REPLY_MSG_LEN];
+  uint8_t reply_msg[RF69_MAX_DATA_LEN];
   uint8_t reply_msg_len;
   
   if (radio.receiveDone())
