@@ -39,3 +39,7 @@ def finishSession(code):
 
 def closeDoor():
     sendAndExpect('close\n', 200)
+
+def setRoomState(state):
+    message = 'room_state_open\n' if state else 'room_state_closed\n'
+    sendAndExpect(message, 200)
