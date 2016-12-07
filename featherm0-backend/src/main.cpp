@@ -33,6 +33,9 @@ static char K2[] = { 0xca, 0xff, 0xee, 0xba, 0xbe, 0x42, 0x13, 0x37, 0xde, 0xca,
 #define CMD_START_WITH_PRESENCE_CHALLENGE "start"
 #define CMD_CLOSE_DOOR "close"
 #define CMD_SELFTEST "selftest"
+#define CMD_ROOM_STATE_OPEN "room_state_open"
+#define CMD_ROOM_STATE_CLOSED "room_state_closed"
+
 
 #define PRESENCE_CHALLENGE_TIMEOUT 15000
 
@@ -67,6 +70,7 @@ void finishSession(char* pc, char* nc, char* oc);
 void selftest();
 void openDoor();
 void closeDoor();
+void roomState(char state);
 
 void setup() {
   Serial.begin(SERIAL_BAUD);
@@ -136,6 +140,10 @@ void loop() {
   } else if (strcmp(in, CMD_CLOSE_DOOR) == 0) {
     closeDoor();
     Serial.println("200 OK");
+  } else if (strcmp(in, CMD_ROOM_STATE_OPEN) == 0) {
+    roomState(1);
+  } else if (strcmp(in, CMD_ROOM_STATE_CLOSED) == 0) {
+    roomState(0);
   } else {
     Serial.print("400 Unknown command: ");
     Serial.println(in);
@@ -398,4 +406,10 @@ void selftest() {
   delay(3000);
 
   Serial.println("099 Selftest complete.");
+}
+
+void roomState(char state) {
+  char radiopacket[2] = { 0x10, state };
+  if (!sendMessage(radiopacket, 2)) return;
+  Serial.println("200 OK");
 }

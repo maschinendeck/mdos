@@ -58,6 +58,8 @@
 	  {{ form.session }}
 	  <button class="button-primary" type="submit" name="action" value="open">Tür öffnen</button>
 	  <button class="button-secondary" type="submit" name="action" value="close">Tür schließen</button>
+	  <button class="button-secondary" type="submit" name="action" value="open_room">Raumstatus auf</button>
+	  <button class="button-secondary" type="submit" name="action" value="close_room">Raumstatus zu</button>
 
 	  {% else %}
 	  <img id="counter" src="{% static "images/maschinendeck.png" %}" alt="Maschinendeck-Logo">
