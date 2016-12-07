@@ -2,12 +2,13 @@
 
 import random,json
 
-keynames = ["k0","k1","k2","kh0","kh1"]
+keynames = ["K0","K1","K2"]
 keys = {}
 
 for key in keynames:
-    keys[key] = ""
+    keys[key] = []
     for i in range(0,16):
-        keys[key] += "{:02x}".format(random.randint(0,255))
+        keys[key].append("0x" + "{:02x}".format(random.randint(0,255)))
+    print "static char %s[] = { %s };" % (key, ",".join(keys[key]))
 
-print json.dumps(keys)
+#print json.dumps(keys)
