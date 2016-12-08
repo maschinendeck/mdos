@@ -1,11 +1,12 @@
 from django.shortcuts import render
 from django import forms
 from django.views.generic import TemplateView, FormView, View
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, HttpResponse
 from django.contrib import messages
 from serialdoorconnection import startSession, finishSession, closeDoor, setRoomState
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
 class OpenForm(forms.Form):
     pin = forms.CharField(widget=forms.TextInput, required=False)
@@ -31,10 +32,6 @@ class LoginView(View):
                 try:
                     if form.cleaned_data['action'] == 'close':
                         closeDoor()
-                    elif form.cleaned_data['action'] == 'open_room':
-                        setRoomState(True)
-                    elif form.cleaned_data['action'] == 'close_room':
-                        setRoomState(False)
                     else:
                         startSession()
                         form = self.form_class(initial={'session': 'dummy'})
@@ -51,3 +48,12 @@ class LoginView(View):
                 
         return render(request, self.template_name, {'form': form})
     
+@method_decorator(csrf_exempt, name='dispatch')
+class RoomStateView(View):
+    def post(self, request, *args, **kwargs):
+        if request.POST.get('state') == 'open':
+            setRoomState(True)
+        else:
+            setRoomState(False)
+        return HttpResponse(status=200)
+

@@ -103,4 +103,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.8/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, "static/")
+
+MDOS_PORT = '/dev/ttyACM0'
+MDOS_BAUD = 115200
+
+### NO DEFAULT SETTING BELOW THIS POINT ###
+try:
+    from settings_local import *
+except ImportError:
+    print "Not using local settings file settings_local.py"
+

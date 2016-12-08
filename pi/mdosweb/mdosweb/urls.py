@@ -15,7 +15,7 @@ Including another URLconf
 """
 from django.conf.urls import include, url
 from django.contrib import admin
-from login.views import LoginView
+from login.views import LoginView, RoomStateView
 from django.contrib.auth import views as auth_views
 
 urlpatterns = [
@@ -23,4 +23,5 @@ urlpatterns = [
     url(r'^accounts/login/$', auth_views.login, name="auth_login"),
     url(r'^admin/', include(admin.site.urls)),
     url(r'^login', LoginView.as_view(), name="login"), 
+    url(r'^setroomstate', RoomStateView.as_view(), name="setroomstate"), 
 ]

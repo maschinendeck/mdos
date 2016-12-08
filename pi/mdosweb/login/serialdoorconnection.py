@@ -1,12 +1,11 @@
 import serial
 import re
 import fcntl
+from django.conf import settings
 
-MDOS_PORT = '/dev/ttyACM2'
-MDOS_BAUD = 115200
 
 def sendAndExpect(message, code):
-    with serial.Serial(MDOS_PORT, MDOS_BAUD, timeout=1) as ser:
+    with serial.Serial(settings.MDOS_PORT, settings.MDOS_BAUD, timeout=1) as ser:
         fcntl.flock(ser.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         ser.reset_input_buffer()
         ser.write(message)
