@@ -6,12 +6,9 @@
 #include <SHA256.h>
 #include <Crypto.h>
 #include <RNG.h>
-//#include <TransistorNoiseSource.h>
+#include <TransistorNoiseSource.h>
 
-static char K0[] = { 0xde, 0xca, 0xfb, 0xad, 0xde, 0xad, 0xbe, 0xef, 0xca, 0xff, 0xee, 0xba, 0xbe, 0x42, 0x13, 0x37};
-static char K1[] = { 0xbe, 0x42, 0x13, 0x37, 0xde, 0xca, 0xfb, 0xad, 0xde, 0xad, 0xbe, 0xef, 0xca, 0xff, 0xee, 0xba };
-static char K2[] = { 0xca, 0xff, 0xee, 0xba, 0xbe, 0x42, 0x13, 0x37, 0xde, 0xca, 0xfb, 0xad, 0xde, 0xad, 0xbe, 0xef };
-
+#include "keys.h"
 
 #define FREQUENCY     RF69_433MHZ
 #define ENCRYPTKEY    "1234567890123456" //exactly the same 16 characters/bytes on all nodes!
@@ -57,8 +54,7 @@ static char K2[] = { 0xca, 0xff, 0xee, 0xba, 0xbe, 0x42, 0x13, 0x37, 0xde, 0xca,
 
 
 RFM69 radio = RFM69(RFM69_CS, RFM69_IRQ, IS_RFM69HCW, RFM69_IRQN);
-//TransistorNoiseSource noise1(A1);
-//TransistorNoiseSource noise2(A2);
+TransistorNoiseSource noise1(A1);
 SHA256 hash;
 
 
@@ -106,7 +102,7 @@ void setup() {
   //RNG.stir(K0, 16);
   //RNG.stir(K1, 16);
   //RNG.stir(K2, 16);  
-  //RNG.addNoiseSource(noise1);
+  RNG.addNoiseSource(noise1);
   //RNG.addNoiseSource(noise2);
 
   pinMode(RELAY0, OUTPUT);
