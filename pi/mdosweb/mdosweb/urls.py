@@ -19,9 +19,8 @@ from login.views import LoginView, RoomStateView
 from django.contrib.auth import views as auth_views
 
 urlpatterns = [
-    
     url(r'^accounts/login/$', auth_views.login, name="auth_login"),
     url(r'^admin/', include(admin.site.urls)),
-    url(r'^login', LoginView.as_view(), name="login"), 
     url(r'^setroomstate', RoomStateView.as_view(), name="setroomstate"), 
+    url(r'^$', LoginView.as_view(), name="login"), 
 ]
