@@ -7,6 +7,11 @@ from serialdoorconnection import startSession, finishSession, closeDoor, setRoom
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from .models import LogEntry
+
+def createLogEntry(request, action):
+    log = LogEntry(user=request.user if request.user.is_authenticated else None, action=action, ip=request.META['REMOTE_ADDR'])
+    log.save()
 
 class OpenForm(forms.Form):
     pin = forms.CharField(widget=forms.TextInput, required=False)
@@ -32,8 +37,10 @@ class LoginView(View):
                 try:
                     if form.cleaned_data['action'] == 'close':
                         closeDoor()
+                        createLogEntry(request, 'close')
                     else:
                         startSession()
+                        createLogEntry(request, 'start_session')
                         form = self.form_class(initial={'session': 'dummy'})
                 except Exception, e:
                     messages.error(self.request, e)
@@ -41,8 +48,10 @@ class LoginView(View):
                 
                 try:
                     finishSession(form.cleaned_data['pin'])
+                    createLogEntry(request, 'open')
                     messages.info(self.request, "Door opened.")
                 except Exception, e:
+                    createLogEntry(request, 'pin_fail')
                     messages.error(self.request, e)
                 return HttpResponseRedirect(self.success_url)
                 
@@ -53,7 +62,9 @@ class RoomStateView(View):
     def post(self, request, *args, **kwargs):
         if request.POST.get('state') == 'open':
             setRoomState(True)
+            createLogEntry(request, 'roomstate_open')
         else:
             setRoomState(False)
+            createLogEntry(request, 'roomstate_closed')
         return HttpResponse(status=200)
 
