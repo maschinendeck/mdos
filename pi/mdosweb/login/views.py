@@ -27,6 +27,7 @@ class LoginView(View):
     
     def get(self, request, *args, **kwargs):
         form = self.form_class()
+        createLogEntry(request, 'index')
         return render(request, self.template_name, {'form': form})
 
     @method_decorator(login_required)
@@ -61,10 +62,10 @@ class LoginView(View):
 class RoomStateView(View):
     def post(self, request, *args, **kwargs):
         if request.POST.get('state') == 'open':
-            setRoomState(True)
             createLogEntry(request, 'roomstate_open')
+            setRoomState(True)
         else:
-            setRoomState(False)
             createLogEntry(request, 'roomstate_closed')
+            setRoomState(False)
         return HttpResponse(status=200)
 
