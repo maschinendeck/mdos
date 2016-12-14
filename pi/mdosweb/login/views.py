@@ -22,9 +22,10 @@ class OpenForm(forms.Form):
 class LoginView(View):
     template_name = "login.html"
     form_class = OpenForm
-    success_url = '/login' #reverse('login') 
+    success_url = '/' #reverse('login') 
 
     
+    @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
         form = self.form_class()
         createLogEntry(request, 'index')
