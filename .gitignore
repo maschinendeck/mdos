@@ -72,7 +72,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+#lib/
 lib64/
 parts/
 sdist/
@@ -132,7 +132,11 @@ target/
 # platformio
 .pioenvs
 .clang_complete
+.piolibdeps
+.gcc-flags.json
 
 .idea
 
 featherm0-frontend/src/keys.h
+featherm0-backend/src/keys.h
+
