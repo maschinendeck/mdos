@@ -58,8 +58,11 @@
 	  {{ form.session }}
 	  <button class="button-primary" type="submit" name="action" value="open">Tür öffnen</button>
 	  <button class="button-secondary" type="submit" name="action" value="close" data-confirm="Achtung! Benutze diese Funktion nicht, wenn du nicht vor Ort bist! Das Schließen der Tür kann nicht rückgängig gemacht werden, wenn du nicht vor Ort bist!">Tür schließen</button>
-	  <!-- <button class="button-secondary" type="submit" name="action" value="open_room">Raumstatus auf</button>
-	  <button class="button-secondary" type="submit" name="action" value="close_room">Raumstatus zu</button> -->
+          <button class="button-secondary" type="submit" name="action" value="restart">Neustarten</button>
+          <!--
+	  <button class="button-secondary" type="submit" name="action" value="open_room">Raumstatus auf</button>
+	  <button class="button-secondary" type="submit" name="action" value="close_room">Raumstatus zu</button>
+          -->
 	  <script>
 	   $('button[data-confirm]').on('click', function (e) {
 	   alert('Erwartet die Kosmetikerin keine Kunden?');

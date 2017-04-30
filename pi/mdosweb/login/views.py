@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from .models import LogEntry
+import os
 
 def createLogEntry(request, action):
     log = LogEntry(user=request.user if request.user.is_authenticated else None, action=action, ip=request.META['REMOTE_ADDR'])
@@ -40,10 +41,12 @@ class LoginView(View):
                     if form.cleaned_data['action'] == 'close':
                         closeDoor()
                         createLogEntry(request, 'close')
-                    else:
+                    elif form.cleaned_data['action'] == 'open':
                         startSession()
                         createLogEntry(request, 'start_session')
                         form = self.form_class(initial={'session': 'dummy'})
+                    elif form.cleaned_data['action'] == 'restart':
+                        os.system("sudo /bin/systemctl restart mdos")
                 except Exception, e:
                     messages.error(self.request, e)
             else:
