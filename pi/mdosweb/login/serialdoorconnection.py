@@ -2,6 +2,26 @@ import serial
 import re
 import fcntl
 from django.conf import settings
+import RPi.GPIO as GPIO
+from time import sleep
+
+# RELAY0
+PIN_22 = 15
+
+# RELAY1
+PIN_23 = 16
+
+
+def closeDoor():
+  GPIO.output(PIN_22, 0)
+  sleep(0.5)
+  GPIO.output(PIN_22, 1)
+
+def openDoor():
+  GPIO.output(PIN_23, 0)
+  sleep(0.5)
+  GPIO.output(PIN_23, 1)
+
 
 
 def sendAndExpect(message, code):
@@ -35,9 +55,11 @@ def finishSession(code):
         raise Exception("This is not a valid code. Valid codes are four digit strings.")
 
     sendAndExpect(code, 200)
+    openDoor()
 
 def closeDoor():
     sendAndExpect('close\n', 200)
+    closeDoor()
 
 def setRoomState(state):
     message = 'room_state_open\n' if state else 'room_state_closed\n'
