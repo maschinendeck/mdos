@@ -81,15 +81,27 @@ void setup() {
   delay(100);
   digitalWrite(RFM69_RST, LOW);
   delay(100);
- 
+
   // Initialize radio
   radio.initialize(FREQUENCY,BACKEND_NODEID,NETWORKID);
   if (IS_RFM69HCW) {
     radio.setHighPower();    // Only for RFM69HCW & HW!
   }
   radio.setPowerLevel(31); // power output ranges from 0 (5dBm) to 31 (20dBm)
-  
-  radio.encrypt(ENCRYPTKEY);
+
+  // 9600
+  // radio.writeReg(0x03, 0x0D);
+  // radio.writeReg(0x04, 0x05);
+
+  // 4800
+  radio.writeReg(0x03, 0x1A);
+  radio.writeReg(0x04, 0x0B);
+
+  // 1200
+  // radio.writeReg(0x03, 0x68);
+  // radio.writeReg(0x04, 0x2B);
+
+  // radio.encrypt(ENCRYPTKEY);
 
   #ifdef DEBUG
   Serial.print("001 Transmitting at ");
@@ -101,7 +113,7 @@ void setup() {
   RNG.begin("mdos frontend", 0);
   //RNG.stir(K0, 16);
   //RNG.stir(K1, 16);
-  //RNG.stir(K2, 16);  
+  //RNG.stir(K2, 16);
   RNG.addNoiseSource(noise1);
   //RNG.addNoiseSource(noise2);
 
@@ -126,7 +138,7 @@ void loop() {
   if (bytesRead > 0) {
     in[bytesRead] = 0x0; // cut off \n
   }
-    
+
   if (strcmp(in, CMD_START_WITH_PRESENCE_CHALLENGE) == 0) {
     startSession(1);
   } else if (strcmp(in, CMD_START_WITHOUT_PRESENCE_CHALLENGE) == 0) {
@@ -226,7 +238,7 @@ void startSession(int usePresenceChallenge){
   radiopacket[0] = 0x00;
   radiopacket[1] = 0x42; // first message, protocol version 0x42
   if (! sendMessage(radiopacket, 2)) return;
-  
+
   #ifdef DEBUG
   Serial.println("012 Step 2");
   #endif
@@ -236,7 +248,7 @@ void startSession(int usePresenceChallenge){
   for (i=0; i<TCLEN; i++) {
     tc[i] = radio.DATA[i+1];
   }
-  
+
   #ifdef DEBUG
   Serial.print("012 tc:");
   printDebug(tc, TCLEN);
@@ -250,7 +262,7 @@ void startSession(int usePresenceChallenge){
   Serial.print("013 nc:");
   printDebug(nc, NCLEN);
   #endif
-  
+
   char mac[MACLEN];
   hash.resetHMAC(K0, sizeof(K0));
   hash.update(tc, TCLEN);
@@ -263,7 +275,7 @@ void startSession(int usePresenceChallenge){
   printDebug(mac, MACLEN);
   #endif
 
-  
+
   //char data[TCLEN + 1 + NCLEN];
   //memcpy(data, tc, TCLEN);
   //memset(data + TCLEN, usePresenceChallenge, 1);

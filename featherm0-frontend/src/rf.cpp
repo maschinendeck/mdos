@@ -28,8 +28,20 @@ void rf_setup() {
     radio.setHighPower();    // Only for RFM69HCW & HW!
   }
   radio.setPowerLevel(31); // power output ranges from 0 (5dBm) to 31 (20dBm)
-  
-  radio.encrypt(ENCRYPTKEY);
+
+  // 9600
+  // radio.writeReg(0x03, 0x0D);
+  // radio.writeReg(0x04, 0x05);
+
+  // 4800
+  radio.writeReg(0x03, 0x1A);
+  radio.writeReg(0x04, 0x0B);
+
+  // 1200
+  // radio.writeReg(0x03, 0x68);
+  // radio.writeReg(0x04, 0x2B);
+
+  // radio.encrypt(ENCRYPTKEY);
 }
 
 void rf_loop() {
@@ -37,7 +49,7 @@ void rf_loop() {
   uint8_t in_msg_len;
   uint8_t reply_msg[RF69_MAX_DATA_LEN];
   uint8_t reply_msg_len;
-  
+
   if (radio.receiveDone())
   {
     //print message received to serial
@@ -56,7 +68,7 @@ void rf_loop() {
       for (int i = 0; i < in_msg_len; i++) {
 	in_msg[i] = radio.DATA[i];
       }
-      
+
       if (radio.ACKRequested()) // needs to be put before something is sent!
 	{
 	  radio.sendACK();
@@ -65,7 +77,7 @@ void rf_loop() {
 	    Serial.flush();
 	  }
 	}
-      
+
       mdos_recv(in_msg, in_msg_len, reply_msg, &reply_msg_len);
       if (reply_msg[0] != 0xff && reply_msg[0] != 0xfe) {
 
@@ -89,8 +101,8 @@ void rf_loop() {
       }
     }
   }
-  
+
   Serial.flush();
-  
+
   //radio.receiveDone(); //put radio in RX mode
 }
